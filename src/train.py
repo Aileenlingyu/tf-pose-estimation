@@ -208,6 +208,7 @@ if __name__ == '__main__':
                 break
 
             if gs_num - last_gs_num >= 100:
+                tf.train.write_graph(sess.graph_def, args.modelpath, 'graph.pb'.format(gs_num))
                 train_loss, train_loss_ll, train_loss_ll_paf, train_loss_ll_heat, lr_val, summary, queue_size = sess.run([total_loss, total_loss_ll, total_loss_ll_paf, total_loss_ll_heat, learning_rate, merged_summary_op, enqueuer.size()])
 
                 # log of training loss / accuracy
