@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 import network_base
-class MobilenetNetworkThin(network_base.BaseNetwork):
+class MobilenetNetworkThinDilate(network_base.BaseNetwork):
     def __init__(self, inputs, trainable=True, conv_width=1.0, conv_width2=None):
         self.conv_width = conv_width
         self.conv_width2 = conv_width2 if conv_width2 else conv_width
@@ -15,17 +15,17 @@ class MobilenetNetworkThin(network_base.BaseNetwork):
         with tf.variable_scope(None, 'MobilenetV1'):
             (self.feed('image')
              .convb(3, 3, depth(32), 2, name='Conv2d_0')
-             .separable_conv(3, 3, depth(64), 1, 1, name='Conv2d_1')
-             .separable_conv(3, 3, depth(128), 2, 1, name='Conv2d_2')
-             .separable_conv(3, 3, depth(128), 1, 1, name='Conv2d_3')
-             .separable_conv(3, 3, depth(256), 2, 1, name='Conv2d_4')
-             .separable_conv(3, 3, depth(256), 1, 1, name='Conv2d_5')
-             .separable_conv(3, 3, depth(512), 1, 1, name='Conv2d_6')
-             .separable_conv(3, 3, depth(512), 1, 1, name='Conv2d_7')
-             .separable_conv(3, 3, depth(512), 1, 1, name='Conv2d_8')
-             .separable_conv(3, 3, depth(512), 1, 1, name='Conv2d_9')
-             .separable_conv(3, 3, depth(512), 1, 1, name='Conv2d_10')
-             .separable_conv(3, 3, depth(512), 1, 1, name='Conv2d_11')
+             .separable_conv(3, 3, depth(64), 1, 1,name='Conv2d_1')
+             .separable_conv(3, 3, depth(128), 2, 1,name='Conv2d_2')
+             .separable_conv(3, 3, depth(128), 1,1, name='Conv2d_3')
+             .separable_conv(3, 3, depth(256), 2,1, name='Conv2d_4')
+             .separable_conv(3, 3, depth(256), 1,1, name='Conv2d_5')
+             .separable_conv(3, 3, depth(512), 1,2, name='Conv2d_6')
+             .separable_conv(3, 3, depth(512), 1,2, name='Conv2d_7')
+             .separable_conv(3, 3, depth(512), 1,2, name='Conv2d_8')
+             .separable_conv(3, 3, depth(512), 1,2, name='Conv2d_9')
+             .separable_conv(3, 3, depth(512), 1,2, name='Conv2d_10')
+             .separable_conv(3, 3, depth(512), 1,2, name='Conv2d_11')
              # .separable_conv(3, 3, depth(1024), 2, name='Conv2d_12')
              # .separable_conv(3, 3, depth(1024), 1, name='Conv2d_13')
              )
@@ -39,10 +39,10 @@ class MobilenetNetworkThin(network_base.BaseNetwork):
         with tf.variable_scope(None, 'Openpose'):
             prefix = 'MConv_Stage1'
             (self.feed(feature_lv)
-             .separable_conv(3, 3, depth2(128), 1, 1, name=prefix + '_L1_1')
-             .separable_conv(3, 3, depth2(128), 1, 1, name=prefix + '_L1_2')
-             .separable_conv(3, 3, depth2(128), 1, 1, name=prefix + '_L1_3')
-             .separable_conv(1, 1, depth2(512), 1, 1, name=prefix + '_L1_4')
+             .separable_conv(3, 3, depth2(128), 1, 1,name=prefix + '_L1_1')
+             .separable_conv(3, 3, depth2(128), 1, 1,name=prefix + '_L1_2')
+             .separable_conv(3, 3, depth2(128), 1, 1,name=prefix + '_L1_3')
+             .separable_conv(1, 1, depth2(512), 1, 1,name=prefix + '_L1_4')
              .separable_conv(1, 1, 38, 1, 1, relu=False, name=prefix + '_L1_5'))
 
             (self.feed(feature_lv)
@@ -50,7 +50,7 @@ class MobilenetNetworkThin(network_base.BaseNetwork):
              .separable_conv(3, 3, depth2(128), 1, 1, name=prefix + '_L2_2')
              .separable_conv(3, 3, depth2(128), 1, 1, name=prefix + '_L2_3')
              .separable_conv(1, 1, depth2(512), 1, 1, name=prefix + '_L2_4')
-             .separable_conv(1, 1, 19, 1, 1, relu=False, name=prefix + '_L2_5'))
+             .separable_conv(1, 1, 19, 1,1, relu=False, name=prefix + '_L2_5'))
 
             for stage_id in range(5):
                 prefix_prev = 'MConv_Stage%d' % (stage_id + 1)
