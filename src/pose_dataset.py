@@ -24,7 +24,7 @@ import tensorflow as tf
 from tensorpack.dataflow import MultiThreadMapData
 from tensorpack.dataflow.image import MapDataComponent
 from tensorpack.dataflow.common import BatchData, MapData
-from tensorpack.dataflow.prefetch import PrefetchData
+from tensorpack.dataflow.parallel import PrefetchData
 from tensorpack.dataflow.base import RNGDataFlow, DataFlowTerminated
 
 from pycocotools.coco import COCO
