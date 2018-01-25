@@ -10,7 +10,7 @@ from common import CocoPart
 _network_w = 368
 _network_h = 368
 _scale = 2
-
+_detection = False
 
 def set_network_input_wh(w, h):
     global _network_w, _network_h
@@ -21,6 +21,9 @@ def set_network_scale(scale):
     global _scale
     _scale = scale
 
+def set_detection(detection):
+    global _detection
+    _detection = detection
 
 def pose_random_scale(meta):
     scalew = random.uniform(0.8, 1.2)

@@ -6,7 +6,8 @@ from network_mobilenet_thin import MobilenetNetworkThin
 
 from network_cmu import CmuNetwork
 from network_personlab import PersonLabNetwork
-
+from network_mobilenet_v2 import MobilenetNetworkV2
+from network_mobilenet_fast import MobilenetNetworkFast
 
 def _get_base_path():
     if not os.environ.get('OPENPOSE_MODEL', ''):
@@ -19,33 +20,49 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
         net = MobilenetNetwork({'image': placeholder_input}, conv_width=0.75, conv_width2=1.00, trainable=trainable)
         pretrain_path = 'pretrained/mobilenet_v1_0.75_224_2017_06_14/mobilenet_v1_0.75_224.ckpt'
         last_layer = 'MConv_Stage6_L{aux}_5'
-    elif type == 'mobilenet_fast':
-        net = MobilenetNetwork({'image': placeholder_input}, conv_width=0.5, conv_width2=0.5, trainable=trainable)
+
+    elif type == 'mobilenet_hg':
+        net = MobilenetHourglass({'image': placeholder_input}, conv_width=0.75, conv_width2=0.5, trainable=trainable)
         pretrain_path = 'pretrained/mobilenet_v1_0.75_224_2017_06_14/mobilenet_v1_0.75_224.ckpt'
         last_layer = 'MConv_Stage6_L{aux}_5'
+
+    elif type == 'mobilenet_hg_shared':
+        net = MobilenetHourglassShared({'image': placeholder_input}, conv_width=0.75, conv_width2=0.5, trainable=trainable)
+        pretrain_path = 'pretrained/mobilenet_v1_0.75_224_2017_06_14/mobilenet_v1_0.75_224.ckpt'
+        last_layer = 'MConv_Stage6_L{aux}_5'
+
+    elif type == 'mobilenet_fast':
+        net = MobilenetNetworkFast({'image': placeholder_input}, conv_width=0.5, conv_width2=0.5, trainable=trainable)
+        pretrain_path = 'pretrained/mobilenet_v1_0.50_224_2017_06_14/mobilenet_v1_0.50_224.ckpt'
+        last_layer = 'MConv_Stage6_L{aux}_5'
+
     elif type == 'mobilenet_accurate':
         net = MobilenetNetwork({'image': placeholder_input}, conv_width=1.00, conv_width2=1.00, trainable=trainable)
         pretrain_path = 'pretrained/mobilenet_v1_1.0_224_2017_06_14/mobilenet_v1_1.0_224.ckpt'
         last_layer = 'MConv_Stage6_L{aux}_5'
-
     elif type == 'mobilenet_thin':
         net = MobilenetNetworkThin({'image': placeholder_input}, conv_width=0.75, conv_width2=0.50, trainable=trainable)
         pretrain_path = 'pretrained/mobilenet_v1_0.75_224_2017_06_14/mobilenet_v1_0.75_224.ckpt'
         last_layer = 'MConv_Stage6_L{aux}_5'
-
+    elif type == 'mobilenet_v2':
+        net = MobilenetNetworkV2All({'image': placeholder_input}, conv_width=1, conv_width2=0.50, trainable=trainable)
+        pretrain_path = 'pretrained/mobilenet_v2/model.ckpt-1450000'
+        last_layer = 'MConv_Stage6_L{aux}_5'
     elif type == 'cmu':
         net = CmuNetwork({'image': placeholder_input}, trainable=trainable)
         pretrain_path = 'numpy/openpose_coco.npy'
-        last_layer = 'Mconv7_stage6_L{aux}'
+        se = 'Mconv7_stage6_L{aux}'
+
     elif type == 'vgg':
         net = CmuNetwork({'image': placeholder_input}, trainable=trainable)
-        pretrain_path = 'numpy/openpose_vgg16.npy'
+        pretrain_path = 'numpy/openpose_coco.npy'
         last_layer = 'Mconv7_stage6_L{aux}'
 
     elif type == 'personlab_resnet101':
         net = PersonLabNetwork({'image': placeholder_input}, trainable=trainable)
         pretrain_path = 'pretrained/resnet_v2_101/resnet_v2_101.ckpt'
         last_layer = 'Mconv7_stage6_L{aux}'
+
     else:
         raise Exception('Invalid Mode.')
 
@@ -58,10 +75,11 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
         else:
             s = '%dx%d' % (placeholder_input.shape[2], placeholder_input.shape[1])
             ckpts = {
-                'mobilenet': 'trained/mobilenet_%s/model-246038' % s,
-                'mobilenet_thin': 'trained/mobilenet_thin_%s/model-449003' % s,
+                'mobilenet': 'trained/mobilenet_%s/model-53008' % s,
+                'mobilenet_thin': 'trained/mobilenet_thin_432x368_stride5/model-26000',
                 'mobilenet_fast': 'trained/mobilenet_fast_%s/model-189000' % s,
-                'mobilenet_accurate': 'trained/mobilenet_accurate/model-170000'
+                'mobilenet_accurate': 'trained/mobilenet_accurate/model-170000',
+                'vgg': 'trained/vgg/model-31000'
             }
             ckpt_path = os.path.join(_get_base_path(), ckpts[type])
             loader = tf.train.Saver()

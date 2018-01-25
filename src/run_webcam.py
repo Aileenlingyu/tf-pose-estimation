@@ -22,7 +22,6 @@ fps_time = 0
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='tf-pose-estimation realtime webcam')
     parser.add_argument('--camera', type=int, default=0)
-
     parser.add_argument('--resize', type=str, default='0x0',
                         help='if provided, resize images before they are processed. default=0x0, Recommends : 432x368 or 656x368 or 1312x736 ')
     parser.add_argument('--resize-out-ratio', type=float, default=4.0,
@@ -43,10 +42,8 @@ if __name__ == '__main__':
     cam = cv2.VideoCapture(args.camera)
     ret_val, image = cam.read()
     logger.info('cam image=%dx%d' % (image.shape[1], image.shape[0]))
-
     while True:
         ret_val, image = cam.read()
-
         logger.debug('image process+')
         humans = e.inference(image)
 

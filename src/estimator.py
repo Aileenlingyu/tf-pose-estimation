@@ -1,5 +1,4 @@
 import logging
-
 import slidingwindow as sw
 
 from pafprocess import pafprocess
@@ -94,7 +93,6 @@ class PoseEstimator:
     @staticmethod
     def estimate_paf(peaks, heat_mat, paf_mat):
         pafprocess.process_paf(peaks, heat_mat, paf_mat)
-
         humans = []
         for human_id in range(pafprocess.get_num_humans()):
             human = Human([])
