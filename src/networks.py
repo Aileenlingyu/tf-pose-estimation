@@ -3,6 +3,7 @@ import os
 import tensorflow as tf
 from network_mobilenet import MobilenetNetwork
 from network_mobilenet_thin import MobilenetNetworkThin
+from network_mobilenet_short import MobilenetNetworkShort
 from network_mobilenet_thin_dilate import MobilenetNetworkThinDilate
 from network_cmu import CmuNetwork
 
@@ -30,6 +31,12 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
         net = MobilenetNetworkThin({'image': placeholder_input}, conv_width=0.75, conv_width2=0.50, trainable=trainable)
         pretrain_path = 'pretrained/mobilenet_v1_0.75_224_2017_06_14/mobilenet_v1_1.0_224'
         last_layer = 'MConv_Stage6_L{aux}_5'
+
+    elif type == 'mobilenet_short':
+        net = MobilenetNetworkShort({'image': placeholder_input}, conv_width=0.75, conv_width2=0.50, trainable=trainable)
+        pretrain_path = 'pretrained/mobilenet_v1_0.75_224_2017_06_14/mobilenet_v1_1.0_224'
+        last_layer = 'MConv_Stage6_L{aux}_5'
+
     elif type == 'mobilenet_dilate':
         net = MobilenetNetworkThinDilate({'image': placeholder_input}, conv_width=0.75, conv_width2=0.50, trainable=trainable)
         pretrain_path = 'pretrained/mobilenet_v1_0.75_224_2017_06_14/mobilenet_v1_1.0_224'
