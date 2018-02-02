@@ -32,6 +32,10 @@ class MobilenetNetworkConv11(network_base.BaseNetwork):
              # .separable_conv(3, 3, depth(1024), 1, name='Conv2d_13')
              )
 
+        # (self.feed('Conv2d_3').max_pool(2, 2, 2, 2, name='Conv2d_3_pool'))
+        #
+        # (self.feed('Conv2d_3_pool', 'Conv2d_7', 'Conv2d_11')
+        #     .concat(3, name='feat_concat'))
 
         feature_lv = 'Conv2d_11'
         with tf.variable_scope(None, 'Openpose'):
@@ -41,14 +45,14 @@ class MobilenetNetworkConv11(network_base.BaseNetwork):
              .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L1_2')
              .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L1_3')
              .separable_conv(1, 1, depth2(512), 1, name=prefix + '_L1_4')
-             .separable_conv(1, 1, 38, 1, relu=False, name=prefix + '_L1_5'))
+             .separable_conv(1, 1, 38, 1, relu=True, name=prefix + '_L1_5'))
 
             (self.feed(feature_lv)
              .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L2_1')
              .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L2_2')
              .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L2_3')
              .separable_conv(1, 1, depth2(512), 1, name=prefix + '_L2_4')
-             .separable_conv(1, 1, 19, 1, relu=False, name=prefix + '_L2_5'))
+             .separable_conv(1, 1, 19, 1, relu=True, name=prefix + '_L2_5'))
 
             for stage_id in range(5):
                 prefix_prev = 'MConv_Stage%d' % (stage_id + 1)
@@ -61,14 +65,14 @@ class MobilenetNetworkConv11(network_base.BaseNetwork):
                  .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L1_2')
                  .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L1_3')
                  .separable_conv(1, 1, depth2(128), 1, name=prefix + '_L1_4')
-                 .separable_conv(1, 1, 38, 1, relu=False, name=prefix + '_L1_5'))
+                 .separable_conv(1, 1, 38, 1, relu=True, name=prefix + '_L1_5'))
 
                 (self.feed(prefix + '_concat')
                  .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L2_1')
                  .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L2_2')
                  .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L2_3')
                  .separable_conv(1, 1, depth2(128), 1, name=prefix + '_L2_4')
-                 .separable_conv(1, 1, 19, 1, relu=False, name=prefix + '_L2_5'))
+                 .separable_conv(1, 1, 19, 1, relu=True, name=prefix + '_L2_5'))
 
             # final result
             (self.feed('MConv_Stage6_L2_5',

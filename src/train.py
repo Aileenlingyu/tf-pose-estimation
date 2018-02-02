@@ -34,7 +34,7 @@ if __name__ == '__main__':
     parser.add_argument('--imgpath', type=str, default='/root/coco/')
     parser.add_argument('--batchsize', type=int, default=96)
     parser.add_argument('--gpus', type=int, default=1)
-    parser.add_argument('--max-epoch', type=int, default=30)
+    parser.add_argument('--max-epoch', type=int, default=60)
     parser.add_argument('--lr', type=str, default='0.01')
     parser.add_argument('--modelpath', type=str, default='/data/private/tf-openpose-models-2018-1/')
     parser.add_argument('--logpath', type=str, default='/data/private/tf-openpose-log-2018-1/')
@@ -53,7 +53,7 @@ if __name__ == '__main__':
     set_network_input_wh(args.input_width, args.input_height)
     scale = 4
 
-    if args.model in ['cmu', 'vgg', 'mobilenet_thin', 'mobilenet_dilate', 'mobilenet_short', 'mobilenet_try3', 'hybridnet_try']:
+    if args.model in ['cmu', 'vgg', 'mobilenet_thin', 'mobilenet_try', 'mobilenet_try2', 'mobilenet_try3', 'hybridnet_try']:
         scale = 8
 
     set_network_scale(scale)
@@ -126,14 +126,14 @@ if __name__ == '__main__':
         if ',' not in args.lr:
             starter_learning_rate = float(args.lr)
             learning_rate = tf.train.exponential_decay(starter_learning_rate, global_step,
-                                                       decay_steps=10000, decay_rate=0.33, staircase=True)
+                                                       decay_steps=130000, decay_rate=0.8, staircase=True)
         else:
             lrs = [float(x) for x in args.lr.split(',')]
             boundaries = [step_per_epoch * 5 * i for i, _ in range(len(lrs)) if i > 0]
             learning_rate = tf.train.piecewise_constant(global_step, boundaries, lrs)
 
-    # optimizer = tf.train.RMSPropOptimizer(learning_rate, decay=0.0005, momentum=0.9, epsilon=1e-10)
-    optimizer = tf.train.AdamOptimizer(learning_rate, epsilon=1e-8)
+    optimizer = tf.train.RMSPropOptimizer(learning_rate, decay=0.0005, momentum=0.9, epsilon=1e-10)
+    #optimizer = tf.train.AdamOptimizer(learning_rate, epsilon=1e-8)
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
     with tf.control_dependencies(update_ops):
         train_op = optimizer.minimize(total_loss, global_step, colocate_gradients_with_ops=True)
@@ -208,7 +208,6 @@ if __name__ == '__main__':
                 break
 
             if gs_num - last_gs_num >= 100:
-                tf.train.write_graph(sess.graph_def, args.modelpath, 'graph.pb'.format(gs_num))
                 train_loss, train_loss_ll, train_loss_ll_paf, train_loss_ll_heat, lr_val, summary, queue_size = sess.run([total_loss, total_loss_ll, total_loss_ll_paf, total_loss_ll_heat, learning_rate, merged_summary_op, enqueuer.size()])
 
                 # log of training loss / accuracy

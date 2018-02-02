@@ -165,7 +165,7 @@ class BaseNetwork(object):
         return tf.image.resize_bilinear(input, [int(input.get_shape()[1]) * factor, int(input.get_shape()[2]) * factor], name=name)
 
     @layer
-    def separable_conv(self, input, k_h, k_w, c_o, stride, rate , name, relu=True, set_bias=True):
+    def separable_conv(self, input, k_h, k_w, c_o, stride, name, relu=True, set_bias=True):
         with slim.arg_scope([slim.batch_norm], decay=0.999, fused=common.batchnorm_fused, is_training=self.trainable):
             output = slim.separable_convolution2d(input,
                                                   num_outputs=None,
@@ -173,7 +173,6 @@ class BaseNetwork(object):
                                                   trainable=self.trainable,
                                                   depth_multiplier=1.0,
                                                   kernel_size=[k_h, k_w],
-                                                  rate = rate,
                                                   # activation_fn=common.activation_fn if relu else None,
                                                   activation_fn=None,
                                                   # normalizer_fn=slim.batch_norm,
