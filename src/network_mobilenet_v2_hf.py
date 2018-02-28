@@ -2,7 +2,7 @@ import tensorflow as tf
 
 import network_base
 
-class MobilenetNetworkV2(network_base.BaseNetwork):
+class MobilenetNetworkV2Hyperfeature(network_base.BaseNetwork):
     def __init__(self, inputs, trainable=True, conv_width=1.0, conv_width2=1.0):
         self.conv_width = conv_width
         self.conv_width2 = conv_width2 if conv_width2 else conv_width
@@ -26,9 +26,9 @@ class MobilenetNetworkV2(network_base.BaseNetwork):
                 .inverted_bottleneck( 6, 96, 0, name = "InvertedResidual_96_0")\
                 .inverted_bottleneck( 6, 96, 0, name = "InvertedResidual_96_1")\
                 .inverted_bottleneck( 6, 96, 0, name = "InvertedResidual_96_2")\
-                #.inverted_bottleneck( 6, 160, 0,name = "InvertedResidual_160_0")\
+                .inverted_bottleneck( 6, 160, 0,name = "InvertedResidual_160_0")\
 
-        feature_lv = 'InvertedResidual_96_2'
+        feature_lv = 'feature_concat'
         with tf.variable_scope('Openpose'):
             prefix = 'MConv_Stage1'
             (self.feed(feature_lv)

@@ -41,7 +41,7 @@ if __name__ == '__main__':
     parser.add_argument('--checkpoint', type=str, default='')
     parser.add_argument('--tag', type=str, default='')
     parser.add_argument('--remote-data', type=str, default='', help='eg. tcp://0.0.0.0:1027')
-
+    parser.add_argument('--decay_steps', type=int, default = 10000)
     parser.add_argument('--input-width', type=int, default=368)
     parser.add_argument('--input-height', type=int, default=368)
     args = parser.parse_args()
@@ -126,7 +126,7 @@ if __name__ == '__main__':
         if ',' not in args.lr:
             starter_learning_rate = float(args.lr)
             learning_rate = tf.train.exponential_decay(starter_learning_rate, global_step,
-                                                       decay_steps=10000, decay_rate=0.33, staircase=True)
+                                                       decay_steps=args.decay_steps * 96/ args.batchsize, decay_rate=0.33, staircase=True)
         else:
             lrs = [float(x) for x in args.lr.split(',')]
             boundaries = [step_per_epoch * 5 * i for i, _ in range(len(lrs)) if i > 0]
