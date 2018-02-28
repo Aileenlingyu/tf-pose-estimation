@@ -1,5 +1,5 @@
 #FROM ubuntu:16.04
-FROM nvidia/cuda:8.0-cudnn6-devel
+FROM nvidia/cuda:9.0-cudnn7-devel
 #COPY . /root/tf-openpose/
 #WORKDIR /root/tf-openpose/
 
@@ -34,8 +34,8 @@ WORKDIR /root/tf-openpose/
 
 RUN cd /root/tf-openpose/ && pip3 install -U setuptools && \
 
-pip3 install https://storage.googleapis.com/tensorflow/linux/gpu/tensorflow_gpu-1.4.1-cp35-cp35m-linux_x86_64.whl  && pip3 install -r requirements.txt
-#pip3 install https://storage.googleapis.com/tensorflow/linux/gpu/tensorflow_gpu-1.5.0rc1-cp35-cp35m-linux_x86_64.whl && pip3 install -r requirements.txt
+#pip3 install https://storage.googleapis.com/tensorflow/linux/gpu/tensorflow_gpu-1.4.1-cp35-cp35m-linux_x86_64.whl  && pip3 install -r requirements.txt
+pip3 install https://storage.googleapis.com/tensorflow/linux/gpu/tensorflow_gpu-1.5.0rc1-cp35-cp35m-linux_x86_64.whl && pip3 install -r requirements.txt
 
 RUN cd /root && git clone https://github.com/cocodataset/cocoapi && \
 pip3 install cython && \

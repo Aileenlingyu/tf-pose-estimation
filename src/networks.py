@@ -3,9 +3,9 @@ import os
 import tensorflow as tf
 from network_mobilenet import MobilenetNetwork
 from network_mobilenet_thin import MobilenetNetworkThin
-
+from network_vgg16x4 import VGG16x4Network
 from network_cmu import CmuNetwork
-
+from network_mobilenet_v2 import MobilenetV2
 
 def _get_base_path():
     if not os.environ.get('OPENPOSE_MODEL', ''):
@@ -29,7 +29,11 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
 
     elif type == 'mobilenet_thin':
         net = MobilenetNetworkThin({'image': placeholder_input}, conv_width=0.75, conv_width2=0.50, trainable=trainable)
-        pretrain_path = 'pretrained/mobilenet_v1_0.75_224_2017_06_14/mobilenet_v1_1.0_224'
+        pretrain_path = 'pretrained/mobilenet_v1_0.75_224_2017_06_14/mobilenet_v1_0.75_224.ckpt'
+        last_layer = 'MConv_Stage6_L{aux}_5'
+    elif type == 'mobilenet_v2':
+        net = MobilenetV2({'image': placeholder_input},  trainable=trainable)
+        pretrain_path = ''
         last_layer = 'MConv_Stage6_L{aux}_5'
 
     elif type == 'cmu':
@@ -39,6 +43,10 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
     elif type == 'vgg':
         net = CmuNetwork({'image': placeholder_input}, trainable=trainable)
         pretrain_path = 'numpy/openpose_vgg16.npy'
+        last_layer = 'Mconv7_stage6_L{aux}'
+    elif type == 'vgg16x4':
+        net = VGG16x4Network({'image': placeholder_input}, trainable=trainable)
+        pretrain_path = 'numpy/vgg16x4.npy'
         last_layer = 'Mconv7_stage6_L{aux}'
     else:
         raise Exception('Invalid Mode.')
