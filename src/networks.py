@@ -5,7 +5,7 @@ from network_mobilenet import MobilenetNetwork
 from network_mobilenet_thin import MobilenetNetworkThin
 from network_vgg16x4 import VGG16x4Network
 from network_cmu import CmuNetwork
-from network_mobilenet_v2 import MobilenetV2
+from network_mobilenet_v2_tf import MobilenetNetworkV2
 
 def _get_base_path():
     if not os.environ.get('OPENPOSE_MODEL', ''):
@@ -33,8 +33,8 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
         last_layer = 'MConv_Stage6_L{aux}_5'
 
     elif type == 'mobilenet_v2':
-        net = MobilenetV2({'image': placeholder_input},  trainable=trainable)
-        pretrain_path = 'numpy/mobilenet_v2.npy'
+        net = MobilenetNetworkV2({'image': placeholder_input},  trainable=trainable)
+        pretrain_path = 'pretrained/mobilenet_v2/model.ckpt-1450000'
         last_layer = 'MConv_Stage6_L{aux}_5'
 
     elif type == 'cmu':

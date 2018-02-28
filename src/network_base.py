@@ -378,3 +378,22 @@ class BaseNetwork(object):
     def dropout(self, input, keep_prob, name):
         keep = 1 - self.use_dropout + (self.use_dropout * keep_prob)
         return tf.nn.dropout(input, keep, name=name)
+
+    @layer
+    def inverted_bottleneck(self, input, up_sample_rate, channels, subsample, name):
+        with tf.variable_scope(name) as sc:
+            #with slim.arg_scope([slim.batch_norm], decay=0.999, fused=common.batchnorm_fused, is_training=self.trainable):
+            stride = 2 if subsample else 1
+            output = slim.convolution2d(input, up_sample_rate*input.get_shape().as_list()[-1], 1, stride = 1,
+                                      activation_fn=tf.nn.relu6, normalizer_fn=slim.batch_norm,
+                                      scope =  'conv')
+            output = slim.separable_convolution2d(output, None, 3,
+                                            depth_multiplier = 1.0, stride=stride,
+                                            activation_fn=tf.nn.relu6, normalizer_fn=slim.batch_norm,
+                                            scope = 'depthwise')
+            output = slim.convolution2d(output, channels, 1, stride = 1,
+                                        activation_fn=None, normalizer_fn=slim.batch_norm,
+                                        scope = "pointwise")
+            if input.get_shape().as_list()[-1] == channels:
+                output = tf.add(input, output)
+        return output
