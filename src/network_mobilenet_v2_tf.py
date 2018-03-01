@@ -25,10 +25,12 @@ class MobilenetNetworkV2(network_base.BaseNetwork):
                 .inverted_bottleneck( 6, 64, 0, name = "InvertedResidual_64_3")\
                 .inverted_bottleneck( 6, 96, 0, name = "InvertedResidual_96_0")\
                 .inverted_bottleneck( 6, 96, 0, name = "InvertedResidual_96_1")\
-                .inverted_bottleneck( 6, 96, 0, name = "InvertedResidual_96_2")\
+                # .inverted_bottleneck( 6, 96, 0, name = "InvertedResidual_96_2")\
                 #.inverted_bottleneck( 6, 160, 0,name = "InvertedResidual_160_0")\
 
-        feature_lv = 'InvertedResidual_96_2'
+        # self.feed('InvertedResidual_24_1').max_pool(2,2,2,2, name = 'block_3_pool')
+        # self.feed('block_3_pool', 'InvertedResidual_32_2', 'InvertedResidual_64_3', 'InvertedResidual_96_1').concat(3, name = 'feat_concat')
+        feature_lv = 'InvertedResidual_96_1'
         with tf.variable_scope('Openpose'):
             prefix = 'MConv_Stage1'
             (self.feed(feature_lv)

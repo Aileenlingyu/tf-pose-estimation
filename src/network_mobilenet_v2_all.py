@@ -2,8 +2,8 @@ import tensorflow as tf
 
 import network_base
 
-class MobilenetNetworkV2(network_base.BaseNetwork):
-    def __init__(self, inputs, trainable=True, conv_width=1.0, conv_width2=1.0):
+class MobilenetNetworkV2All(network_base.BaseNetwork):
+    def __init__(self, inputs, trainable=True, conv_width=1.0, conv_width2=0.5):
         self.conv_width = conv_width
         self.conv_width2 = conv_width2 if conv_width2 else conv_width
         network_base.BaseNetwork.__init__(self, inputs, trainable)
@@ -20,30 +20,31 @@ class MobilenetNetworkV2(network_base.BaseNetwork):
                 .inverted_bottleneck( 6, 32, 0, name = "InvertedResidual_32_1")\
                 .inverted_bottleneck( 6, 32, 0, name = "InvertedResidual_32_2")\
                 .inverted_bottleneck( 6, 64, 0, name = "InvertedResidual_64_0")\
-                .inverted_bottleneck( 6, 64, 0, name = "InvertedResidual_64_1")\
-                .inverted_bottleneck( 6, 64, 0, name = "InvertedResidual_64_2")\
-                .inverted_bottleneck( 6, 64, 0, name = "InvertedResidual_64_3")\
-                .inverted_bottleneck( 6, 96, 0, name = "InvertedResidual_96_0")\
-                .inverted_bottleneck( 6, 96, 0, name = "InvertedResidual_96_1")\
+                # .inverted_bottleneck( 6, 64, 0, name = "InvertedResidual_64_1")\
+                # .inverted_bottleneck( 6, 64, 0, name = "InvertedResidual_64_2")\
+                # .inverted_bottleneck( 6, 64, 0, name = "InvertedResidual_64_3")\
+                #.inverted_bottleneck( 6, 96, 0, name = "InvertedResidual_96_0")\
+                #.inverted_bottleneck( 6, 96, 0, name = "InvertedResidual_96_1")\
                 # .inverted_bottleneck( 6, 96, 0, name = "InvertedResidual_96_2")\
                 #.inverted_bottleneck( 6, 160, 0,name = "InvertedResidual_160_0")\
 
-        # self.feed('InvertedResidual_24_1').max_pool(2,2,2,2, name = 'block_3_pool')
-        # self.feed('block_3_pool', 'InvertedResidual_32_2', 'InvertedResidual_64_3', 'InvertedResidual_96_1').concat(3, name = 'feat_concat')
-        feature_lv = 'InvertedResidual_96_1'
+        self.feed('InvertedResidual_24_1').max_pool(2,2,2,2, name = 'block_3_pool')
+        self.feed('block_3_pool', 'InvertedResidual_32_2', 'InvertedResidual_64_0').concat(3, name = 'feat_concat')
+        feature_lv = 'feat_concat'
+        cout = 128
         with tf.variable_scope('Openpose'):
             prefix = 'MConv_Stage1'
             (self.feed(feature_lv)
-             .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L1_1')
-             .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L1_2')
-             .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L1_3')
+             .inverted_bottleneck(1, depth2(cout), 0, name= prefix + '_L1_1')
+             .inverted_bottleneck(1, depth2(cout), 0, name=prefix + '_L1_2')
+             .inverted_bottleneck(1, depth2(cout), 0, name=prefix + '_L1_3')
              .separable_conv(1, 1, depth2(512), 1, name=prefix + '_L1_4')
              .separable_conv(1, 1, 38, 1, relu=False, name=prefix + '_L1_5'))
 
             (self.feed(feature_lv)
-             .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L2_1')
-             .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L2_2')
-             .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L2_3')
+             .inverted_bottleneck(1, depth2(cout), 0, name = prefix + '_L2_1')
+             .inverted_bottleneck(1, depth2(cout), 0, name=prefix + '_L2_2')
+             .inverted_bottleneck(1, depth2(cout), 0, name=prefix + '_L2_3')
              .separable_conv(1, 1, depth2(512), 1, name=prefix + '_L2_4')
              .separable_conv(1, 1, 19, 1, relu=False, name=prefix + '_L2_5'))
 
@@ -54,17 +55,17 @@ class MobilenetNetworkV2(network_base.BaseNetwork):
                            prefix_prev + '_L2_5',
                            feature_lv)
                  .concat(3, name=prefix + '_concat')
-                 .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L1_1')
-                 .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L1_2')
-                 .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L1_3')
-                 .separable_conv(1, 1, depth2(128), 1, name=prefix + '_L1_4')
+                 .inverted_bottleneck(1, depth2(cout), 0, name=prefix + '_L1_1')
+                 .inverted_bottleneck(1, depth2(cout), 0, name=prefix + '_L1_2')
+                 .inverted_bottleneck(1, depth2(cout), 0, name=prefix + '_L1_3')
+                 .separable_conv(1, 1, depth2(cout), 1, name=prefix + '_L1_4')
                  .separable_conv(1, 1, 38, 1, relu=False, name=prefix + '_L1_5'))
 
                 (self.feed(prefix + '_concat')
-                 .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L2_1')
-                 .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L2_2')
-                 .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L2_3')
-                 .separable_conv(1, 1, depth2(128), 1, name=prefix + '_L2_4')
+                 .inverted_bottleneck(1, depth2(cout), 0, name=prefix + '_L2_1')
+                 .inverted_bottleneck(1, depth2(cout), 0, name=prefix + '_L2_2')
+                 .inverted_bottleneck(1, depth2(cout), 0, name=prefix + '_L2_3')
+                 .separable_conv(1, 1, depth2(cout), 1, name=prefix + '_L2_4')
                  .separable_conv(1, 1, 19, 1, relu=False, name=prefix + '_L2_5'))
 
             # final result
