@@ -166,25 +166,6 @@ class BaseNetwork(object):
         return tf.image.resize_bilinear(input, [int(input.get_shape()[1]) * factor, int(input.get_shape()[2]) * factor], name=name)
 
     @layer
-    def inverted_bottleneck(self, input, up_sample_rate, channels, subsample, i, name):
-        with slim.arg_scope([slim.batch_norm], decay=0.999, fused=common.batchnorm_fused, is_training=self.trainable):
-            stride = 2 if subsample else 1
-            output = slim.convolution2d(input, up_sample_rate*input.get_shape().as_list()[-1],stride=1,
-                                        kernel_size=[1, 1],
-                                      activation_fn=common.activation_fn,
-                                      scope = name + '_conv2d_1')
-            output = slim.separable_convolution2d(output, None, kernel_size= [3,3], 
-                                            depth_multiplier = 1.0, stride=stride,
-                                            activation_fn=common.activation_fn,
-                                            scope= name +  '_separable')
-            output = slim.convolution2d(output, channels, stride=1,
-                                        kernel_size=[1, 1],
-                                        activation_fn=None,
-                                        scope = name + '_conv2d_2')
-            if input.get_shape().as_list()[-1] == channels:
-                output = tf.add(input, output, name + 'output')
-        return output
-    @layer
     def separable_conv(self, input, k_h, k_w, c_o, stride, name, relu=True, set_bias=True):
         with slim.arg_scope([slim.batch_norm], decay=0.999, fused=common.batchnorm_fused, is_training=self.trainable):
             output = slim.separable_convolution2d(input,
@@ -391,7 +372,7 @@ class BaseNetwork(object):
                                             depth_multiplier = 1.0, stride=stride,
                                             activation_fn=tf.nn.relu6, normalizer_fn=slim.batch_norm,
                                             scope = 'depthwise')
-            output = slim.convolution2d(output, channels, 1, stride = 1,
+            output = slim.convolution2d(output, channels, 1, stride=1,
                                         activation_fn=None, normalizer_fn=slim.batch_norm,
                                         scope = "pointwise")
             if input.get_shape().as_list()[-1] == channels:
