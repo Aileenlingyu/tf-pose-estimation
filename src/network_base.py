@@ -366,14 +366,20 @@ class BaseNetwork(object):
             #with slim.arg_scope([slim.batch_norm], decay=0.999, fused=common.batchnorm_fused, is_training=self.trainable):
             stride = 2 if subsample else 1
             output = slim.convolution2d(input, up_sample_rate*input.get_shape().as_list()[-1], 1, stride = 1,
-                                      activation_fn=tf.nn.relu6, normalizer_fn=slim.batch_norm,
+                                      activation_fn=common.activation_fn, normalizer_fn=slim.batch_norm,
                                       scope =  'conv')
             output = slim.separable_convolution2d(output, None, 3,
-                                            depth_multiplier = 1.0, stride=stride,
-                                            activation_fn=tf.nn.relu6, normalizer_fn=slim.batch_norm,
-                                            scope = 'depthwise')
+                                              depth_multiplier = 1.0, stride=stride,
+                                              activation_fn=common.activation_fn , normalizer_fn=slim.batch_norm,
+                                              weights_initializer=_init_xavier,
+                                              # weights_initializer=_init_norm,
+                                              weights_regularizer=_l2_regularizer_00004,
+                                              biases_initializer=None,
+                                              padding=DEFAULT_PADDING,
+                                              scope = 'depthwise')
             output = slim.convolution2d(output, channels, 1, stride=1,
                                         activation_fn=None, normalizer_fn=slim.batch_norm,
+                                        weights_initializer=_init_xavier,
                                         scope = "pointwise")
             if input.get_shape().as_list()[-1] == channels:
                 output = tf.add(input, output)
