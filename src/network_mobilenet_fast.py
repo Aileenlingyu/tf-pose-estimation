@@ -33,11 +33,11 @@ class MobilenetNetworkFast(network_base.BaseNetwork):
              )
 
         self.feed('Conv2d_9', 'Conv2d_10', 'Conv2d_11').add(name = 'feat_2')
-        self.feed('Conv2d_5', 'Conv2d_6', 'Conv2d_7').add(name = 'feat_1')
+        self.feed('Conv2d_8', 'Conv2d_6', 'Conv2d_7').add(name = 'feat_1')
 
         (self.feed('Conv2d_3').max_pool(2, 2, 2, 2, name='Conv2d_3_pool'))
 
-        (self.feed('Conv2d_3_pool', 'Conv2d_8', 'feat_1', 'feat_2')
+        (self.feed('Conv2d_3_pool', 'Conv2d_5', 'feat_1', 'feat_2')
             .concat(3, name='feat_concat'))
 
         feature_lv = 'feat_concat'
