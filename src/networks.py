@@ -7,6 +7,7 @@ from network_vgg16x4 import VGG16x4Network
 from network_cmu import CmuNetwork
 from network_mobilenet_v2_tf import MobilenetNetworkV2
 from network_mobilenet_v2_all import MobilenetNetworkV2All
+from resnet32 import Resnet32
 
 def _get_base_path():
     if not os.environ.get('OPENPOSE_MODEL', ''):
@@ -20,12 +21,13 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
         pretrain_path = 'pretrained/mobilenet_v1_0.75_224_2017_06_14/mobilenet_v1_0.75_224.ckpt'
         last_layer = 'MConv_Stage5_L{aux}_5'
     elif type == 'mobilenet_fast':
-        net = MobilenetNetwork({'image': placeholder_input}, conv_width=0.5, conv_width2=0.5, trainable=trainable)
+        net = MobilenetNetworkThin({'image': placeholder_input}, conv_width=0.5, conv_width2=0.5, trainable=trainable)
         pretrain_path = 'pretrained/mobilenet_v1_0.50_224_2017_06_14/mobilenet_v1_0.50_224.ckpt'
         last_layer = 'MConv_Stage6_L{aux}_5'
+
     elif type == 'mobilenet_accurate':
-        net = MobilenetNetwork({'image': placeholder_input}, conv_width=1.00, conv_width2=1.00, trainable=trainable)
-        pretrain_path = 'pretrained/mobilenet_v1_0.75_224_2017_06_14/mobilenet_v1_0.75_224.ckpt'
+        net = MobilenetNetworkThin({'image': placeholder_input}, conv_width=1.00, conv_width2=0.50, trainable=trainable)
+        pretrain_path = 'pretrained/mobilenet_v1_1.0_224_2017_06_14/mobilenet_v1_1.0_224.ckpt'
         last_layer = 'MConv_Stage6_L{aux}_5'
 
     elif type == 'mobilenet_thin':
@@ -34,7 +36,7 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
         last_layer = 'MConv_Stage6_L{aux}_5'
 
     elif type == 'mobilenet_v2':
-        net = MobilenetNetworkV2All({'image': placeholder_input}, conv_width=0.75, conv_width2=0.50, trainable=trainable)
+        net = MobilenetNetworkV2All({'image': placeholder_input}, conv_width=1, conv_width2=0.50, trainable=trainable)
         pretrain_path = 'pretrained/mobilenet_v2/model.ckpt-1450000'
         last_layer = 'MConv_Stage6_L{aux}_5'
 
@@ -46,6 +48,12 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
         net = CmuNetwork({'image': placeholder_input}, trainable=trainable)
         pretrain_path = 'numpy/openpose_vgg16.npy'
         last_layer = 'Mconv7_stage6_L{aux}'
+
+    elif type == 'resnet32':
+        net = Resnet32({'image': placeholder_input}, conv_width=0.75, conv_width2=0.50, trainable=trainable)
+        pretrain_path = 'numpy/resnet32.npy'
+        last_layer = 'MConv_Stage6_L{aux}_5'
+
     elif type == 'vgg16x4':
         net = VGG16x4Network({'image': placeholder_input}, trainable=trainable)
         pretrain_path = 'numpy/vgg16x4.npy'
