@@ -4,6 +4,8 @@ import tensorflow as tf
 from network_mobilenet import MobilenetNetwork
 from network_mobilenet_thin import MobilenetNetworkThin
 from network_vgg16x4 import VGG16x4Network
+from network_vgg16x5 import VGG16x5Network
+
 from network_cmu import CmuNetwork
 from network_mobilenet_v2_tf import MobilenetNetworkV2
 from network_mobilenet_v2_all import MobilenetNetworkV2All
@@ -56,8 +58,13 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
         last_layer = 'MConv_Stage6_L{aux}_5'
 
     elif type == 'vgg16x4':
-        net = VGG16x4Network({'image': placeholder_input}, trainable=trainable)
+        net = VGG16x4Network({'image': placeholder_input}, conv_width=0.75, conv_width2=0.50, trainable=trainable)
         pretrain_path = 'numpy/vgg16x4.npy'
+        last_layer = 'Mconv7_stage6_L{aux}'
+
+    elif type == 'vgg16x5':
+        net = VGG16x5Network({'image': placeholder_input}, conv_width=0.75, conv_width2=0.50, trainable=trainable)
+        pretrain_path = 'numpy/vgg16x5.npy'
         last_layer = 'Mconv7_stage6_L{aux}'
     else:
         raise Exception('Invalid Mode.')

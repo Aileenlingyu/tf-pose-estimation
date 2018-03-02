@@ -53,7 +53,7 @@ if __name__ == '__main__':
     set_network_input_wh(args.input_width, args.input_height)
     scale = 4
 
-    if args.model in ['cmu', 'vgg', 'mobilenet_thin', 'vgg16x4', 'mobilenet_fast', 'resnet32' , 'mobilenet_accurate', 'mobilenet_v2', 'hybridnet_try']:
+    if args.model in ['cmu', 'vgg', 'mobilenet_thin', 'vgg16x4', 'vgg16x5', 'mobilenet_fast', 'resnet32' , 'mobilenet_accurate', 'mobilenet_v2', 'hybridnet_try']:
         scale = 8
 
     set_network_scale(scale)
