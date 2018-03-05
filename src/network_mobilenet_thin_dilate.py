@@ -3,6 +3,7 @@ import tensorflow as tf
 import network_base
 class MobilenetNetworkThinDilate(network_base.BaseNetwork):
     def __init__(self, inputs, trainable=True, conv_width=1.0, conv_width2=None):
+        self.trainable = trainable
         self.conv_width = conv_width
         self.conv_width2 = conv_width2 if conv_width2 else conv_width
         network_base.BaseNetwork.__init__(self, inputs, trainable)
@@ -20,20 +21,13 @@ class MobilenetNetworkThinDilate(network_base.BaseNetwork):
              .separable_conv(3, 3, depth(128), 1,1, name='Conv2d_3')
              .separable_conv(3, 3, depth(256), 2,1, name='Conv2d_4')
              .separable_conv(3, 3, depth(256), 1,1, name='Conv2d_5')
-             .separable_conv(3, 3, depth(512), 1,2, name='Conv2d_6')
-             .separable_conv(3, 3, depth(512), 1,2, name='Conv2d_7')
-             .separable_conv(3, 3, depth(512), 1,2, name='Conv2d_8')
-             .separable_conv(3, 3, depth(512), 1,2, name='Conv2d_9')
-             .separable_conv(3, 3, depth(512), 1,2, name='Conv2d_10')
-             .separable_conv(3, 3, depth(512), 1,2, name='Conv2d_11')
-             # .separable_conv(3, 3, depth(1024), 2, name='Conv2d_12')
-             # .separable_conv(3, 3, depth(1024), 1, name='Conv2d_13')
+             .separable_conv(3, 3, depth(512), 1,1, name='Conv2d_6')
+             .atrous_conv(3, 3, depth(512), 2, padding='SAME', biased=False, relu=False, name='as_1')
+             .batch_normalization(name='as1_bn', relu = True)
              )
 
-        (self.feed('Conv2d_3').max_pool(2, 2, 2, 2, name='Conv2d_3_pool'))
-
-        (self.feed('Conv2d_3_pool', 'Conv2d_7', 'Conv2d_11')
-            .concat(3, name='feat_concat'))
+        (self.feed( 'Conv2d_6', 'as1_bn')
+            .add(name='feat_concat'))
 
         feature_lv = 'feat_concat'
         with tf.variable_scope(None, 'Openpose'):
@@ -42,37 +36,30 @@ class MobilenetNetworkThinDilate(network_base.BaseNetwork):
              .separable_conv(3, 3, depth2(128), 1, 1,name=prefix + '_L1_1')
              .separable_conv(3, 3, depth2(128), 1, 1,name=prefix + '_L1_2')
              .separable_conv(3, 3, depth2(128), 1, 1,name=prefix + '_L1_3')
-             .separable_conv(1, 1, depth2(512), 1, 1,name=prefix + '_L1_4')
-             .separable_conv(1, 1, 38, 1, 1, relu=False, name=prefix + '_L1_5'))
+             .separable_conv(1, 1, depth2(512), 1, 1,name=prefix + '_L1_4'))
+             #.separable_conv(1, 1, 38, 1, 1, relu=False, name=prefix + '_L1_5'))
 
             (self.feed(feature_lv)
              .separable_conv(3, 3, depth2(128), 1, 1, name=prefix + '_L2_1')
              .separable_conv(3, 3, depth2(128), 1, 1, name=prefix + '_L2_2')
              .separable_conv(3, 3, depth2(128), 1, 1, name=prefix + '_L2_3')
-             .separable_conv(1, 1, depth2(512), 1, 1, name=prefix + '_L2_4')
-             .separable_conv(1, 1, 19, 1,1, relu=False, name=prefix + '_L2_5'))
+             .separable_conv(1, 1, depth2(512), 1, 1, name=prefix + '_L2_4'))
+             #.separable_conv(1, 1, 19, 1,1, relu=False, name=prefix + '_L2_5'))
 
-            for stage_id in range(5):
-                prefix_prev = 'MConv_Stage%d' % (stage_id + 1)
-                prefix = 'MConv_Stage%d' % (stage_id + 2)
-                (self.feed(prefix_prev + '_L1_5',
-                           prefix_prev + '_L2_5',
-                           feature_lv)
-                 .concat(3, name=prefix + '_concat')
-                 .separable_conv(3, 3, depth2(128), 1, 1, name=prefix + '_L1_1')
-                 .separable_conv(3, 3, depth2(128), 1, 1, name=prefix + '_L1_2')
-                 .separable_conv(3, 3, depth2(128), 1, 1, name=prefix + '_L1_3')
-                 .separable_conv(1, 1, depth2(128), 1, 1, name=prefix + '_L1_4')
-                 .separable_conv(1, 1, 38, 1, 1, relu=False, name=prefix + '_L1_5'))
+            self.feed('MConv_Stage1_L1_4').atrous_conv(3, 3, 38, 6, padding='SAME', relu=False, name='L1_c0')
+            self.feed('MConv_Stage1_L1_4').atrous_conv(3, 3, 38, 12, padding='SAME', relu=False, name='L1_c1')
+            self.feed('MConv_Stage1_L1_4').atrous_conv(3, 3, 38, 18, padding='SAME', relu=False, name='L1_c2')
+            self.feed('MConv_Stage1_L1_4').atrous_conv(3, 3, 38, 24, padding='SAME', relu=False, name='L1_c3')
+            self.feed('L1_c0', 'L1_c1', 'L1_c2', 'L1_c3').add(name = "MConv_Stage6_L1_5")
 
-                (self.feed(prefix + '_concat')
-                 .separable_conv(3, 3, depth2(128), 1, 1, name=prefix + '_L2_1')
-                 .separable_conv(3, 3, depth2(128), 1, 1, name=prefix + '_L2_2')
-                 .separable_conv(3, 3, depth2(128), 1, 1, name=prefix + '_L2_3')
-                 .separable_conv(1, 1, depth2(128), 1, 1, name=prefix + '_L2_4')
-                 .separable_conv(1, 1, 19, 1, 1, relu=False, name=prefix + '_L2_5'))
 
-            # final result
+            self.feed('MConv_Stage1_L2_4').atrous_conv(3, 3, 19, 6, padding='SAME', relu=False, name='L2_c0')
+            self.feed('MConv_Stage1_L2_4').atrous_conv(3, 3, 19, 12, padding='SAME', relu=False, name='L2_c1')
+            self.feed('MConv_Stage1_L2_4').atrous_conv(3, 3, 19, 18, padding='SAME', relu=False, name='L2_c2')
+            self.feed('MConv_Stage1_L2_4').atrous_conv(3, 3, 19, 24, padding='SAME', relu=False, name='L2_c3')
+            self.feed('L2_c0', 'L2_c1', 'L2_c2', 'L2_c3').add(name = "MConv_Stage6_L2_5")
+
+                        # final result
             (self.feed('MConv_Stage6_L2_5',
                        'MConv_Stage6_L1_5')
              .concat(3, name='concat_stage7'))

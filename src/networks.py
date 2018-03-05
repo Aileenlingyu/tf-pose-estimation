@@ -3,6 +3,7 @@ import os
 import tensorflow as tf
 from network_mobilenet import MobilenetNetwork
 from network_mobilenet_thin import MobilenetNetworkThin
+from network_mobilenet_thin_dilate import MobilenetNetworkThinDilate
 from network_vgg16x4 import VGG16x4Network
 from network_vgg16x5 import VGG16x5Network
 
@@ -38,6 +39,12 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
         pretrain_path = 'pretrained/mobilenet_v1_0.75_224_2017_06_14/mobilenet_v1_0.75_224.ckpt'
         last_layer = 'MConv_Stage6_L{aux}_5'
 
+    elif type == 'mobilenet_thin_dilate':
+        net = MobilenetNetworkThinDilate({'image': placeholder_input}, conv_width=0.75, conv_width2=0.750, trainable=trainable)
+        pretrain_path = 'pretrained/mobilenet_v1_0.75_224_2017_06_14/mobilenet_v1_0.75_224.ckpt'
+        last_layer = 'MConv_Stage6_L{aux}_5'
+
+
     elif type == 'mobilenet_v2':
         net = MobilenetNetworkV2All({'image': placeholder_input}, conv_width=1, conv_width2=0.50, trainable=trainable)
         pretrain_path = 'pretrained/mobilenet_v2/model.ckpt-1450000'
@@ -58,12 +65,12 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
         last_layer = 'MConv_Stage6_L{aux}_5'
 
     elif type == 'vgg16x4':
-        net = VGG16x4Network({'image': placeholder_input}, conv_width=0.75, conv_width2=0.50, trainable=trainable)
+        net = VGG16x4Network({'image': placeholder_input}, conv_width=0.75, conv_width2=0.75, trainable=trainable)
         pretrain_path = 'numpy/vgg16x4.npy'
         last_layer = 'Mconv7_stage6_L{aux}'
 
     elif type == 'vgg16x5':
-        net = VGG16x5Network({'image': placeholder_input}, conv_width=0.75, conv_width2=0.50, trainable=trainable)
+        net = VGG16x5Network({'image': placeholder_input}, conv_width=0.75, conv_width2=1, trainable=trainable)
         pretrain_path = 'numpy/vgg16x5.npy'
         last_layer = 'Mconv7_stage6_L{aux}'
     else:
@@ -78,7 +85,10 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
                 'mobilenet': 'trained/mobilenet_%s/model-53008' % s,
                 'mobilenet_thin': 'pretrained/mobilenet_0.75_0.50_model-388003/model-388003',
                 'mobilenet_fast': 'trained/mobilenet_fast_%s/model-189000' % s,
-                'mobilenet_accurate': 'trained/mobilenet_accurate/model-170000'
+                'mobilenet_accurate': 'trained/mobilenet_accurate/model-170000',
+                'vgg16x4' : 'trained/vgg16x4_0.75/model-35000',
+                'vgg16x5': 'trained/vgg16x5/model-32000'
+
             }
             loader = tf.train.Saver()
             loader.restore(sess_for_load, os.path.join(_get_base_path(), ckpts[type]))

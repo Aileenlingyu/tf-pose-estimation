@@ -166,11 +166,12 @@ class BaseNetwork(object):
         return tf.image.resize_bilinear(input, [int(input.get_shape()[1]) * factor, int(input.get_shape()[2]) * factor], name=name)
 
     @layer
-    def separable_conv(self, input, k_h, k_w, c_o, stride, name, relu=True, set_bias=True):
+    def separable_conv(self, input, k_h, k_w, c_o, stride, rate, name, relu=True, set_bias=True):
         with slim.arg_scope([slim.batch_norm], decay=0.999, fused=common.batchnorm_fused, is_training=self.trainable):
             output = slim.separable_convolution2d(input,
                                                   num_outputs=None,
                                                   stride=stride,
+                                                  rate = rate,
                                                   trainable=self.trainable,
                                                   depth_multiplier=1.0,
                                                   kernel_size=[k_h, k_w],
@@ -187,6 +188,7 @@ class BaseNetwork(object):
             output = slim.convolution2d(output,
                                         c_o,
                                         stride=1,
+                                        rate = rate,
                                         kernel_size=[1, 1],
                                         activation_fn=common.activation_fn if relu else None,
                                         weights_initializer=_init_xavier,
@@ -384,3 +386,45 @@ class BaseNetwork(object):
             if input.get_shape().as_list()[-1] == channels:
                 output = tf.add(input, output)
         return output
+
+    @layer
+    def atrous_conv(self,
+                    input,
+                    k_h,
+                    k_w,
+                    c_o,
+                    dilation,
+                    name,
+                    relu=True,
+                    padding=DEFAULT_PADDING,
+                    group=1,
+                    biased=True):
+        # Verify that the padding is acceptable
+        self.validate_padding(padding)
+        # Get the number of channels in the input
+        c_i = input.get_shape().as_list()[-1]
+        # Verify that the grouping parameter is valid
+        assert c_i % group == 0
+        assert c_o % group == 0
+        # Convolution for a given input and kernel
+        convolve = lambda i, k: tf.nn.atrous_conv2d(i, k, dilation, padding=padding)
+        with tf.variable_scope(name) as scope:
+            kernel = self.make_var('weights', shape=[k_h, k_w, c_i / group, c_o])
+            if group == 1:
+                # This is the common-case. Convolve the input without any further complications.
+                output = convolve(input, kernel)
+            else:
+                # Split the input into groups and then convolve each of them independently
+                input_groups = tf.split(3, group, input)
+                kernel_groups = tf.split(3, group, kernel)
+                output_groups = [convolve(i, k) for i, k in zip(input_groups, kernel_groups)]
+                # Concatenate the groups
+                output = tf.concat(3, output_groups)
+            # Add the biases
+            if biased:
+                biases = self.make_var('biases', [c_o])
+                output = tf.nn.bias_add(output, biases)
+            if relu:
+                # ReLU non-linearity
+                output = tf.nn.relu(output, name=scope.name)
+            return output
