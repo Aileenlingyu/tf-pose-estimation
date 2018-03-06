@@ -57,7 +57,6 @@ class MobilenetNetworkThinDilate(network_base.BaseNetwork):
             self.feed(prefix + '_L1_4').atrous_conv(3, 3, 38, 12, padding='SAME', relu=False, name=prefix + '_L1_c3')
             self.feed(prefix + '_L1_c0', prefix + '_L1_c1', prefix + '_L1_c2', prefix + '_L1_c3').add(name =prefix +  "_L1_5")
 
-
             self.feed(prefix + '_L2_4').atrous_conv(3, 3, 19, 3, padding='SAME', relu=False, name=prefix + '_L2_c0')
             self.feed(prefix + '_L2_4').atrous_conv(3, 3, 19, 6, padding='SAME', relu=False, name=prefix + '_L2_c1')
             self.feed(prefix + '_L2_4').atrous_conv(3, 3, 19, 9, padding='SAME', relu=False, name=prefix + '_L2_c2')
