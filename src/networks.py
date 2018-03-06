@@ -12,6 +12,7 @@ from network_mobilenet_v2_tf import MobilenetNetworkV2
 from network_mobilenet_v2_all import MobilenetNetworkV2All
 from resnet32 import Resnet32
 from network_mobilenet_fast import MobilenetNetworkFast
+from network_hourglass import MobilenetHourglass
 
 def _get_base_path():
     if not os.environ.get('OPENPOSE_MODEL', ''):
@@ -23,7 +24,13 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
     if type == 'mobilenet':
         net = MobilenetNetwork({'image': placeholder_input}, conv_width=0.75, conv_width2=1.00, trainable=trainable)
         pretrain_path = 'pretrained/mobilenet_v1_0.75_224_2017_06_14/mobilenet_v1_0.75_224.ckpt'
-        last_layer = 'MConv_Stage5_L{aux}_5'
+        last_layer = 'MConv_Stage6_L{aux}_5'
+
+    elif type == 'mobilenet_hg':
+        net = MobilenetHourglass({'image': placeholder_input}, conv_width=0.75, conv_width2=0.5, trainable=trainable)
+        pretrain_path = 'pretrained/mobilenet_v1_0.75_224_2017_06_14/mobilenet_v1_0.75_224.ckpt'
+        last_layer = 'MConv_Stage6_L{aux}_5'
+
     elif type == 'mobilenet_fast':
         net = MobilenetNetworkFast({'image': placeholder_input}, conv_width=0.5, conv_width2=0.5, trainable=trainable)
         pretrain_path = 'pretrained/mobilenet_v1_0.50_224_2017_06_14/mobilenet_v1_0.50_224.ckpt'
