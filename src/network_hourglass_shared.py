@@ -3,7 +3,7 @@ import tensorflow as tf
 import network_base
 
 
-class MobilenetHourglass(network_base.BaseNetwork):
+class MobilenetHourglassShared(network_base.BaseNetwork):
     def __init__(self, inputs, trainable=True, conv_width=1.0, conv_width2=None):
         self.conv_width = conv_width
         self.conv_width2 = conv_width2 if conv_width2 else conv_width
@@ -32,17 +32,14 @@ class MobilenetHourglass(network_base.BaseNetwork):
              # .separable_conv(3, 3, depth(1024), 1, name='Conv2d_13')
              )
 
-        self.feed('Conv2d_3').separable_conv(3, 3, depth(512), 1 , name = 'Conv2d_3_side')
-
-        self.feed('Conv2d_5').separable_conv(3, 3, depth(512), 1 , name = 'Conv2d_5_side')
         self.feed('Conv2d_11').upsample(2, name='Conv2d_11_upsample')
 
-        self.feed('Conv2d_5_side', 'Conv2d_11_upsample')\
-            .add(name='cb1')\
-            .separable_conv(3, 3, depth(512), 1, name='Conv2d_5_right')\
+        self.feed('Conv2d_5', 'Conv2d_11_upsample')\
+            .concat(3, name='cb1')\
+            .separable_conv(3, 3, depth(512 + 128), 1, name='Conv2d_5_right')\
             .upsample(2, name='Conv2d_5_upsample')
 
-        self.feed('Conv2d_3_side', 'Conv2d_5_upsample')\
+        self.feed('Conv2d_3', 'Conv2d_5_upsample')\
             .add(name = 'cb2')\
             .separable_conv(3,3, depth(512), 1, name = 'Conv2d_3_right')
 
