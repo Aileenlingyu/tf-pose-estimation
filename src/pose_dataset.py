@@ -45,10 +45,13 @@ mplset = False
 
 class CocoMetadata:
     # __coco_parts = 57
-    __coco_parts = 15
+    __coco_parts = 13
     __coco_vecs = list(zip(
-        [2, 9,  10, 2,  12, 13, 2, 3, 4, 2, 6, 7, 2],
-        [9, 10, 11, 12, 13, 14, 3, 4, 5, 6, 7, 8, 1]
+        # [2, 9,  10, 2,  12, 13, 2, 3, 4, 2, 6, 7, 2],
+        # [9, 10, 11, 12, 13, 14, 3, 4, 5, 6, 7, 8, 1]
+
+        [2, 9,  2, 11, 2, 3, 4, 2, 6, 7, 2],
+        [9, 10, 11, 12,  3, 4, 5, 6, 7, 8, 1]
     ))
 
     @staticmethod
@@ -84,8 +87,8 @@ class CocoMetadata:
 
         self.joint_list = []
         transform = list(zip(
-            [1, 6, 7, 9, 11, 6, 8, 10, 13,  12, 14, 3, 2, 5, 4],
-            [1, 7, 7, 9, 11, 6, 8, 10, 13,  12, 14, 3, 2, 5, 4]
+            [1, 6, 7, 9, 11, 6, 8, 10, 3, 2, 5, 4],
+            [1, 7, 7, 9, 11, 6, 8, 10, 3, 2, 5, 4]
         ))
         for prev_joint in joint_list:
             new_joint = []
@@ -364,7 +367,7 @@ def get_dataflow(path, is_train, img_path=None):
         #     ]), 0.7)
         # ]
         # ds = AugmentImageComponent(ds, augs)
-        ds = PrefetchData(ds, 1000, multiprocessing.cpu_count()-10 )
+        ds = PrefetchData(ds, 1000, multiprocessing.cpu_count() )
     else:
         ds = MultiThreadMapData(ds, nr_thread=16, map_func=read_image_url, buffer_size=1000)
         ds = MapDataComponent(ds, pose_resize_shortestedge_fixed)

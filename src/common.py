@@ -21,15 +21,17 @@ class CocoPart(Enum):
     LWrist = 7
     RHip = 8
     RKnee = 9
-    RAnkle = 10
-    LHip = 11
-    LKnee = 12
-    LAnkle = 13
+    #RAnkle = 10
+    LHip = 10
+    LKnee = 11
+    #LAnkle = 13
     # REye = 14
     # LEye = 15
     # REar = 16
     # LEar = 17
-    Background = 14
+    Background = 12
+
+    # delete 10 13  11->10, 12->11
 
 
 class MPIIPart(Enum):
@@ -106,7 +108,7 @@ CocoPairsNetwork = [
  ]  # = 19
 
 CocoColors = [[255, 0, 0], [255, 85, 0], [255, 170, 0], [255, 255, 0], [170, 255, 0], [85, 255, 0], [0, 255, 0],
-              [0, 255, 85], [0, 255, 170], [0, 255, 255], [0, 170, 255], [0, 85, 255], [0, 0, 255], [85, 0, 255],
+              [0, 255, 85], [0, 255, 170], [0, 255, 255], [0, 170, 255], [0, 85, 255]
              ]
 
 
