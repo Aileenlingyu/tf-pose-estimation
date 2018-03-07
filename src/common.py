@@ -25,11 +25,11 @@ class CocoPart(Enum):
     LHip = 11
     LKnee = 12
     LAnkle = 13
-    REye = 14
-    LEye = 15
-    REar = 16
-    LEar = 17
-    Background = 18
+    # REye = 14
+    # LEye = 15
+    # REar = 16
+    # LEar = 17
+    Background = 14
 
 
 class MPIIPart(Enum):
@@ -97,7 +97,7 @@ class MPIIPart(Enum):
 
 CocoPairs = [
     (1, 2), (1, 5), (2, 3), (3, 4), (5, 6), (6, 7), (1, 8), (8, 9), (9, 10), (1, 11),
-    (11, 12), (12, 13), (1, 0), (0, 14), (14, 16), (0, 15), (15, 17), (2, 16), (5, 17)
+    (11, 12), (12, 13), (1, 0)
 ]   # = 19
 CocoPairsRender = CocoPairs[:-2]
 CocoPairsNetwork = [
@@ -107,7 +107,7 @@ CocoPairsNetwork = [
 
 CocoColors = [[255, 0, 0], [255, 85, 0], [255, 170, 0], [255, 255, 0], [170, 255, 0], [85, 255, 0], [0, 255, 0],
               [0, 255, 85], [0, 255, 170], [0, 255, 255], [0, 170, 255], [0, 85, 255], [0, 0, 255], [85, 0, 255],
-              [170, 0, 255], [255, 0, 255], [255, 0, 170], [255, 0, 85]]
+             ]
 
 
 def read_imgfile(path, width, height):

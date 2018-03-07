@@ -176,7 +176,7 @@ def pose_flip(meta):
     # flip meta
     flip_list = [CocoPart.Nose, CocoPart.Neck, CocoPart.LShoulder, CocoPart.LElbow, CocoPart.LWrist, CocoPart.RShoulder, CocoPart.RElbow, CocoPart.RWrist,
                  CocoPart.LHip, CocoPart.LKnee, CocoPart.LAnkle, CocoPart.RHip, CocoPart.RKnee, CocoPart.RAnkle,
-                 CocoPart.LEye, CocoPart.REye, CocoPart.LEar, CocoPart.REar, CocoPart.Background]
+                 CocoPart.Background]
     adjust_joint_list = []
     for joint in meta.joint_list:
         adjust_joint = []
