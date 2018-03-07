@@ -18,7 +18,6 @@ formatter = logging.Formatter('[%(asctime)s] [%(name)s] [%(levelname)s] %(messag
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
-
 class Human:
     """
     body_parts: list of BodyPart
@@ -121,14 +120,14 @@ class PoseEstimator:
 
     @staticmethod
     def estimate(heat_mat, paf_mat):
-        if heat_mat.shape[2] == 19:
+        if heat_mat.shape[2] == 13:
             heat_mat = np.rollaxis(heat_mat, 2, 0)
-        if paf_mat.shape[2] == 38:
+        if paf_mat.shape[2] == 13 * 2:
             paf_mat = np.rollaxis(paf_mat, 2, 0)
 
         if PoseEstimator.heatmap_supress:
-            heat_mat = heat_mat - heat_mat.min(axis=1).min(axis=1).reshape(19, 1, 1)
-            heat_mat = heat_mat - heat_mat.min(axis=2).reshape(19, heat_mat.shape[1], 1)
+            heat_mat = heat_mat - heat_mat.min(axis=1).min(axis=1).reshape(13, 1, 1)
+            heat_mat = heat_mat - heat_mat.min(axis=2).reshape(13, heat_mat.shape[1], 1)
 
         if PoseEstimator.heatmap_gaussian:
             heat_mat = gaussian_filter(heat_mat, sigma=0.5)
@@ -147,6 +146,7 @@ class PoseEstimator:
         print("hetamap shape is {}x{}".format(heat_mat.shape[1], heat_mat.shape[2]))
         pairs_by_conn = list()
         for (part_idx1, part_idx2), (paf_x_idx, paf_y_idx) in zip(CocoPairs, CocoPairsNetwork):
+            print(part_idx1, part_idx2, paf_x_idx, paf_y_idx)
             pairs = PoseEstimator.score_pairs(
                 part_idx1, part_idx2,
                 coords[part_idx1], coords[part_idx2],
@@ -330,8 +330,8 @@ class TfPoseEstimator:
         output = self.persistent_sess.run(self.tensor_output, feed_dict={self.tensor_image: [npimg]})
         logger.debug('inference-')
 
-        self.heatMat = output[0, :, :, :19]
-        self.pafMat = output[0, :, :, 19:]
+        self.heatMat = output[0, :, :, :13]
+        self.pafMat = output[0, :, :, 13:]
 
         humans = PoseEstimator.estimate(self.heatMat, self.pafMat)
         #CocoPose.display_image(npimg, self.heatMat, self.pafMat)
