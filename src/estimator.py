@@ -121,14 +121,14 @@ class PoseEstimator:
 
     @staticmethod
     def estimate(heat_mat, paf_mat):
-        if heat_mat.shape[2] == 19:
+        if heat_mat.shape[2] == 15:
             heat_mat = np.rollaxis(heat_mat, 2, 0)
-        if paf_mat.shape[2] == 38:
+        if paf_mat.shape[2] == 30:
             paf_mat = np.rollaxis(paf_mat, 2, 0)
 
         if PoseEstimator.heatmap_supress:
-            heat_mat = heat_mat - heat_mat.min(axis=1).min(axis=1).reshape(19, 1, 1)
-            heat_mat = heat_mat - heat_mat.min(axis=2).reshape(19, heat_mat.shape[1], 1)
+            heat_mat = heat_mat - heat_mat.min(axis=1).min(axis=1).reshape(15, 1, 1)
+            heat_mat = heat_mat - heat_mat.min(axis=2).reshape(15, heat_mat.shape[1], 1)
 
         if PoseEstimator.heatmap_gaussian:
             heat_mat = gaussian_filter(heat_mat, sigma=0.5)
@@ -330,8 +330,8 @@ class TfPoseEstimator:
         output = self.persistent_sess.run(self.tensor_output, feed_dict={self.tensor_image: [npimg]})
         logger.debug('inference-')
 
-        self.heatMat = output[0, :, :, :19]
-        self.pafMat = output[0, :, :, 19:]
+        self.heatMat = output[0, :, :, :15]
+        self.pafMat = output[0, :, :, 15:]
 
         humans = PoseEstimator.estimate(self.heatMat, self.pafMat)
         #CocoPose.display_image(npimg, self.heatMat, self.pafMat)
