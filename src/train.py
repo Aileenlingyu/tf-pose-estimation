@@ -64,8 +64,8 @@ if __name__ == '__main__':
     logger.info('define model+')
     with tf.device(tf.DeviceSpec(device_type="GPU", device_index=0)):
         input_node = tf.placeholder(tf.float32, shape=(args.batchsize, args.input_height, args.input_width, 3), name='image')
-        vectmap_node = tf.placeholder(tf.float32, shape=(args.batchsize, output_h, output_w, 38), name='vectmap')
-        heatmap_node = tf.placeholder(tf.float32, shape=(args.batchsize, output_h, output_w, 19), name='heatmap')
+        vectmap_node = tf.placeholder(tf.float32, shape=(args.batchsize, output_h, output_w, 30), name='vectmap')
+        heatmap_node = tf.placeholder(tf.float32, shape=(args.batchsize, output_h, output_w, 15), name='heatmap')
 
         # prepare data
         if not args.remote_data:

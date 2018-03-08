@@ -118,10 +118,6 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
 def get_graph_path(model_name):
     return {
         'cmu_640x480': './models/graph/cmu_640x480/graph_opt.pb',
-        'cmuq_640x480': './models/graph/cmu_640x480/graph_q.pb',
-
-        'cmu_640x360': './models/graph/cmu_640x360/graph_opt.pb',
-        'cmuq_640x360': './models/graph/cmu_640x360/graph_q.pb',
         'mobilenet_thinwide_368x368': './model/mobilenet_thin_wide/graph_opt_mobilenet_26000.pb',
         'mobilenet_thin_432x368': './models/graph/mobilenet_thin_432x368/graph_opt.pb',
         'mobilenet_368x368': './model/mobilenet_batch:16/graph_opt_mobilenet_35005_batch_16.pb',
