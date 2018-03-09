@@ -14,7 +14,7 @@ from tqdm import tqdm
 from tensorpack.dataflow.remote import RemoteDataZMQ
 
 from pose_dataset import get_dataflow_batch, DataFlowToQueue, CocoPose
-from pose_augment import set_network_input_wh, set_network_scale
+from pose_augment import set_network_input_wh, set_network_scale, set_detection
 from common import get_sample_images
 from networks import get_network
 
@@ -44,6 +44,9 @@ if __name__ == '__main__':
     parser.add_argument('--decay_steps', type=int, default = 10000)
     parser.add_argument('--input-width', type=int, default=368)
     parser.add_argument('--input-height', type=int, default=368)
+    parser.add_argument('--parts', type=int, default=19)
+    parser.add_argument('--do_detection', type=bool, default=False)
+
     args = parser.parse_args()
 
     if args.gpus <= 0:
@@ -52,6 +55,7 @@ if __name__ == '__main__':
     # define input placeholder
     set_network_input_wh(args.input_width, args.input_height)
     scale = 4
+    detection = args.do_detection
 
     if args.model in ['cmu', 'vgg', 'mobilenet_thin_dilate' ,'mobilenet_thin', 'mobilenet_thin_up' ,
                       'vgg16x4', 'vgg16x5', 'mobilenet_fast', 'resnet32' , 'mobilenet_accurate',
@@ -59,13 +63,17 @@ if __name__ == '__main__':
         scale = 8
 
     set_network_scale(scale)
+    set_detection(detection)
+
     output_w, output_h = args.input_width // scale, args.input_height // scale
 
     logger.info('define model+')
     with tf.device(tf.DeviceSpec(device_type="GPU", device_index=0)):
         input_node = tf.placeholder(tf.float32, shape=(args.batchsize, args.input_height, args.input_width, 3), name='image')
-        vectmap_node = tf.placeholder(tf.float32, shape=(args.batchsize, output_h, output_w, 38), name='vectmap')
-        heatmap_node = tf.placeholder(tf.float32, shape=(args.batchsize, output_h, output_w, 19), name='heatmap')
+        vectmap_node = tf.placeholder(tf.float32, shape=(args.batchsize, output_h, output_w, args.parts * 2), name='vectmap')
+        heatmap_node = tf.placeholder(tf.float32, shape=(args.batchsize, output_h, output_w, args.parts), name='heatmap')
+        bbox_vectormap_node = tf.placeholder(tf.float32, shape=(args.batchsize, output_h, output_w, 2), name = "bbox_vectmap")
+        bbox_headmap_node = tf.placeholder(tf.float32, shape=(args.batchsize, output_h, output_w, 2), name = "bbox_heatmap")
 
         # prepare data
         if not args.remote_data:
@@ -73,9 +81,13 @@ if __name__ == '__main__':
         else:
             # transfer inputs from ZMQ
             df = RemoteDataZMQ(args.remote_data, hwm=3)
-        enqueuer = DataFlowToQueue(df, [input_node, heatmap_node, vectmap_node], queue_size=100)
-        q_inp, q_heat, q_vect = enqueuer.dequeue()
 
+        if detection :
+            enqueuer = DataFlowToQueue(df, [input_node, heatmap_node, vectmap_node, bbox_headmap_node, bbox_vectormap_node], queue_size=100)
+            q_inp, q_heat, q_vect, q_bbox_heat, q_bbox_vect = enqueuer.dequeue()
+        else:
+            enqueuer = DataFlowToQueue(df, [input_node, heatmap_node, vectmap_node], queue_size=100)
+            q_inp, q_heat, q_vect = enqueuer.dequeue()
     df_valid = get_dataflow_batch(args.datapath, False, args.batchsize, img_path=args.imgpath)
     df_valid.reset_state()
     validation_cache = []
@@ -87,40 +99,85 @@ if __name__ == '__main__':
     logger.info(q_vect)
 
     # define model for multi-gpu
-    q_inp_split, q_heat_split, q_vect_split = tf.split(q_inp, args.gpus), tf.split(q_heat, args.gpus), tf.split(q_vect, args.gpus)
+    if not detection :
+        q_inp_split, q_heat_split, q_vect_split = tf.split(q_inp, args.gpus), tf.split(q_heat, args.gpus), tf.split(q_vect, args.gpus)
+    else:
+        q_inp_split, q_heat_split, q_vect_split, \
+        q_bbox_heat_split, q_bbox_vect_slit = tf.split(q_inp, args.gpus)\
+                                          , tf.split(q_heat, args.gpus)\
+                                          , tf.split(q_vect, args.gpus), tf.split(q_bbox_heat, args.gpus), tf.split(q_bbox_vect, args.gpus)
 
     output_vectmap = []
     output_heatmap = []
     losses = []
     last_losses_l1 = []
     last_losses_l2 = []
+
+    output_bbox_heatmap = []
+    output_bbox_vectmap = []
+    last_losses_bbox_l1 = []
+    last_losses_bbox_l2 = []
+
     outputs = []
     for gpu_id in range(args.gpus):
         with tf.device(tf.DeviceSpec(device_type="GPU", device_index=gpu_id)):
             with tf.variable_scope(tf.get_variable_scope(), reuse=(gpu_id > 0)):
                 net, pretrain_path, last_layer = get_network(args.model, q_inp_split[gpu_id])
-                vect, heat = net.loss_last()
-                output_vectmap.append(vect)
-                output_heatmap.append(heat)
-                outputs.append(net.get_output())
 
-                l1s, l2s = net.loss_l1_l2()
-                for idx, (l1, l2) in enumerate(zip(l1s, l2s)):
-                    loss_l1 = tf.nn.l2_loss(tf.concat(l1, axis=0) - q_vect_split[gpu_id], name='loss_l1_stage%d_tower%d' % (idx, gpu_id))
-                    loss_l2 = tf.nn.l2_loss(tf.concat(l2, axis=0) - q_heat_split[gpu_id], name='loss_l2_stage%d_tower%d' % (idx, gpu_id))
-                    losses.append(tf.reduce_mean([loss_l1, loss_l2]))
+                if not detection:
+                    vect, heat = net.loss_last()
+                    output_vectmap.append(vect)
+                    output_heatmap.append(heat)
+                    outputs.append(net.get_output())
 
-                last_losses_l1.append(loss_l1)
-                last_losses_l2.append(loss_l2)
+                    l1s, l2s = net.loss_l1_l2()
+                    for idx, (l1, l2) in enumerate(zip(l1s, l2s)):
+                        loss_l1 = tf.nn.l2_loss(tf.concat(l1, axis=0) - q_vect_split[gpu_id], name='loss_l1_stage%d_tower%d' % (idx, gpu_id))
+                        loss_l2 = tf.nn.l2_loss(tf.concat(l2, axis=0) - q_heat_split[gpu_id], name='loss_l2_stage%d_tower%d' % (idx, gpu_id))
+                        losses.append(tf.reduce_mean([loss_l1, loss_l2]))
+
+                    last_losses_l1.append(loss_l1)
+                    last_losses_l2.append(loss_l2)
+                else:
+                    vect, heat, bbox_vect, bbox_heat = net.loss_last()
+                    output_vectmap.append(vect)
+                    output_heatmap.append(heat)
+                    output_bbox_heatmap.append(bbox_heat)
+                    output_bbox_vectmap.append(bbox_vect)
+                    outputs.append(net.get_output())
+                    l1s, l2s, bbox_l1s, bbox_l2s = net.loss_l1_l2()
+                    for idx, (l1, l2, bbox_l1, bbox_l2) in enumerate(zip(l1s, l2s, bbox_l1s, bbox_l2s)):
+                        loss_l1 = tf.nn.l2_loss(tf.concat(l1, axis=0) - q_vect_split[gpu_id],
+                                                name='loss_l1_stage%d_tower%d' % (idx, gpu_id))
+                        loss_l2 = tf.nn.l2_loss(tf.concat(l2, axis=0) - q_heat_split[gpu_id],
+                                                name='loss_l2_stage%d_tower%d' % (idx, gpu_id))
+                        loss_bbox_l1 = tf.nn.l2_loss(tf.concat(bbox_l1, axis=0)-q_bbox_vect_slit[gpu_id],
+                                                name='loss_bbox_l1_stage%d_tower%d' %(idx, gpu_id))
+                        loss_bbox_l2 = tf.nn.l2_loss(tf.concat(bbox_l2, axis=0) - q_bbox_heat_split[gpu_id],
+                                                name='loss_bbox_l2_stage%d_tower%d' % (idx, gpu_id))
+                        losses.append(tf.reduce_mean([loss_l1, loss_l2, loss_bbox_l1, loss_bbox_l2]))
+
+                    last_losses_l1.append(loss_l1)
+                    last_losses_l2.append(loss_l2)
+                    last_losses_bbox_l1.append(loss_bbox_l1)
+                    last_losses_bbox_l2.append(loss_bbox_l2)
 
     outputs = tf.concat(outputs, axis=0)
 
     with tf.device(tf.DeviceSpec(device_type="GPU", device_index=gpu_id)):
         # define loss
-        total_loss = tf.reduce_sum(losses) / args.batchsize
-        total_loss_ll_paf = tf.reduce_sum(last_losses_l1) / args.batchsize
-        total_loss_ll_heat = tf.reduce_sum(last_losses_l2) / args.batchsize
-        total_loss_ll = tf.reduce_mean([total_loss_ll_paf, total_loss_ll_heat])
+        if not detection:
+            total_loss = tf.reduce_sum(losses) / args.batchsize
+            total_loss_ll_paf = tf.reduce_sum(last_losses_l1) / args.batchsize
+            total_loss_ll_heat = tf.reduce_sum(last_losses_l2) / args.batchsize
+            total_loss_ll  = tf.reduce_sum([total_loss_ll_heat, total_loss_ll_paf])
+        else:
+            total_loss = tf.reduce_sum(losses) / args.batchsize
+            total_loss_ll_paf = tf.reduce_sum(last_losses_l1) / args.batchsize
+            total_loss_ll_heat = tf.reduce_sum(last_losses_l2) / args.batchsize
+            total_loss_bbox_paf = tf.reduce_sum(last_losses_bbox_l1) / args.batchsize
+            total_loss_bbox_heat =tf.reduce_sum(last_losses_bbox_l2) / args.batchsize
+            total_loss_ll  = tf.reduce_sum([total_loss_ll_heat, total_loss_ll_paf, total_loss_bbox_paf, total_loss_bbox_heat])
 
         # define optimizer
         step_per_epoch = 121745 // args.batchsize
@@ -136,7 +193,6 @@ if __name__ == '__main__':
 
     #optimizer = tf.train.RMSPropOptimizer(learning_rate, decay=0.0005, momentum=0.9, epsilon=1e-10)
     optimizer = tf.train.AdamOptimizer(learning_rate, epsilon=1e-8)
-    #optimizer = tf.train.GradientDescentOptimizer(learning_rate)
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
     with tf.control_dependencies(update_ops):
         train_op = optimizer.minimize(total_loss, global_step, colocate_gradients_with_ops=True)
@@ -147,6 +203,10 @@ if __name__ == '__main__':
     tf.summary.scalar("loss_lastlayer", total_loss_ll)
     tf.summary.scalar("loss_lastlayer_paf", total_loss_ll_paf)
     tf.summary.scalar("loss_lastlayer_heat", total_loss_ll_heat)
+    if detection:
+        tf.summary.scalar("loss_lastlayer_bbox_paf", total_loss_bbox_paf)
+        tf.summary.scalar("loss_lastlayer_bbox_heat", total_loss_bbox_heat)
+
     tf.summary.scalar("queue_size", enqueuer.size())
     merged_summary_op = tf.summary.merge_all()
 
@@ -154,6 +214,10 @@ if __name__ == '__main__':
     valid_loss_ll = tf.placeholder(tf.float32, shape=[])
     valid_loss_ll_paf = tf.placeholder(tf.float32, shape=[])
     valid_loss_ll_heat = tf.placeholder(tf.float32, shape=[])
+    if detection:
+        valid_loss_bbox_heat = tf.placeholder(tf.float32, shape=[])
+        valid_loss_bbox_paf = tf.placeholder(tf.float32, shape=[])
+
     sample_train = tf.placeholder(tf.float32, shape=(4, 640, 640, 3))
     sample_valid = tf.placeholder(tf.float32, shape=(12, 640, 640, 3))
     train_img = tf.summary.image('training sample', sample_train, 4)
@@ -211,11 +275,17 @@ if __name__ == '__main__':
                 break
 
             if gs_num - last_gs_num >= 100:
-                train_loss, train_loss_ll, train_loss_ll_paf, train_loss_ll_heat, lr_val, summary, queue_size = sess.run([total_loss, total_loss_ll, total_loss_ll_paf, total_loss_ll_heat, learning_rate, merged_summary_op, enqueuer.size()])
+                if not detection:
+                    train_loss, train_loss_ll, train_loss_ll_paf, train_loss_ll_heat, lr_val, summary, queue_size = sess.run([total_loss, total_loss_ll, total_loss_ll_paf, total_loss_ll_heat, learning_rate, merged_summary_op, enqueuer.size()])
+                else:
+                    train_loss, train_loss_ll, train_loss_ll_paf, train_loss_ll_heat, train_loss_bbox_paf, train_loss_bbox_heat, lr_val, summary, queue_size = sess.run([total_loss, total_loss_ll, total_loss_ll_paf, total_loss_ll_heat, total_loss_bbox_paf, total_loss_bbox_heat, learning_rate, merged_summary_op, enqueuer.size()])
 
                 # log of training loss / accuracy
                 batch_per_sec = (gs_num - initial_gs_num) / (time.time() - time_started)
-                logger.info('epoch=%.2f step=%d, %0.4f examples/sec lr=%f, loss=%g, loss_ll=%g, loss_ll_paf=%g, loss_ll_heat=%g, q=%d' % (gs_num / step_per_epoch, gs_num, batch_per_sec * args.batchsize, lr_val, train_loss, train_loss_ll, train_loss_ll_paf, train_loss_ll_heat, queue_size))
+                if not detection:
+                    logger.info('epoch=%.2f step=%d, %0.4f examples/sec lr=%f, loss=%g, loss_ll=%g, loss_ll_paf=%g, loss_ll_heat=%g, q=%d' % (gs_num / step_per_epoch, gs_num, batch_per_sec * args.batchsize, lr_val, train_loss, train_loss_ll, train_loss_ll_paf, train_loss_ll_heat, queue_size))
+                else:
+                    logger.info('epoch=%.2f step=%d, %0.4f examples/sec lr=%f, loss=%g, loss_ll=%g, loss_ll_paf=%g, loss_ll_heat=%g, loss_ll_bboxpaf=%g, loss_ll_bboxheat=%g,  q=%d' % (gs_num / step_per_epoch, gs_num, batch_per_sec * args.batchsize, lr_val, train_loss, train_loss_ll, train_loss_ll_paf, train_loss_ll_heat, train_loss_bbox_paf, train_loss_bbox_heat, queue_size))
                 last_gs_num = gs_num
 
                 file_writer.add_summary(summary, gs_num)
@@ -228,8 +298,13 @@ if __name__ == '__main__':
                 total_cnt = 0
 
                 if len(validation_cache) == 0:
-                    for images_test, heatmaps, vectmaps in tqdm(df_valid.get_data()):
-                        validation_cache.append((images_test, heatmaps, vectmaps))
+                    if not detection :
+                        for images_test, heatmaps, vectmaps in tqdm(df_valid.get_data()):
+                            validation_cache.append((images_test, heatmaps, vectmaps))
+                    else:
+                        for image_test, heatmaps, vectmaps, bbox_heatmaps, bbox_vectmaps in tqdm(df_valid.get_data()):
+                            validation_cache.append((image_test, heatmaps, vectmaps, bbox_heatmaps, bbox_vectmaps))
+
                     df_valid.reset_state()
                     del df_valid
                     df_valid = None
@@ -247,6 +322,8 @@ if __name__ == '__main__':
                     total_cnt += len(images_test)
 
                 logger.info('validation(%d) %s loss=%f, loss_ll=%f, loss_ll_paf=%f, loss_ll_heat=%f' % (total_cnt, training_name, average_loss / total_cnt, average_loss_ll / total_cnt, average_loss_ll_paf / total_cnt, average_loss_ll_heat / total_cnt))
+
+
                 last_gs_num2 = gs_num
 
                 sample_image = [enqueuer.last_dp[0][i] for i in range(4)]
@@ -254,7 +331,7 @@ if __name__ == '__main__':
                     outputs,
                     feed_dict={q_inp: np.array((sample_image + val_image)*(args.batchsize // 16))}
                 )
-                pafMat, heatMat = outputMat[:, :, :, 19:], outputMat[:, :, :, :19]
+                pafMat, heatMat = outputMat[:, :, :, args.parts:], outputMat[:, :, :, :args.parts]
 
                 sample_results = []
                 for i in range(len(sample_image)):

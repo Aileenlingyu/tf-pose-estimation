@@ -10,7 +10,7 @@ from common import CocoPart
 _network_w = 368
 _network_h = 368
 _scale = 2
-
+_detection = False
 
 def set_network_input_wh(w, h):
     global _network_w, _network_h
@@ -21,6 +21,9 @@ def set_network_scale(scale):
     global _scale
     _scale = scale
 
+def set_detection(detection):
+    global _detection
+    _detection = detection
 
 def pose_random_scale(meta):
     scalew = random.uniform(0.8, 1.2)
@@ -258,6 +261,13 @@ def _rotate_coord(shape, newxy, point, angle):
 
 def pose_to_img(meta_l):
     global _network_w, _network_h, _scale
-    return [meta_l[0].img.astype(np.float16),
-            meta_l[0].get_heatmap(target_size=(_network_w // _scale, _network_h // _scale)),
-            meta_l[0].get_vectormap(target_size=(_network_w // _scale, _network_h // _scale))]
+    if _detection:
+        return [meta_l[0].img.astype(np.float16),
+                meta_l[0].get_heatmap(target_size=(_network_w // _scale, _network_h // _scale)),
+                meta_l[0].get_vectormap(target_size=(_network_w // _scale, _network_h // _scale)),
+                meta_l[0].get_bboxmap(target_size=(_network_w // _scale, _network_h // _scale)),
+                meta_l[0].get_bbox_vectormap(target_size=(_network_w // _scale, _network_h // _scale)) ]
+    else:
+        return [meta_l[0].img.astype(np.float16),
+                meta_l[0].get_heatmap(target_size=(_network_w // _scale, _network_h // _scale)),
+                meta_l[0].get_vectormap(target_size=(_network_w // _scale, _network_h // _scale))]

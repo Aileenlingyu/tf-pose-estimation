@@ -4,9 +4,10 @@ import network_base
 
 
 class MobilenetNetworkThin(network_base.BaseNetwork):
-    def __init__(self, inputs, trainable=True, conv_width=1.0, conv_width2=None):
+    def __init__(self, inputs, trainable=True, conv_width=1.0, conv_width2=0.5, detection=False):
         self.conv_width = conv_width
         self.conv_width2 = conv_width2 if conv_width2 else conv_width
+        self.detection = detection
         network_base.BaseNetwork.__init__(self, inputs, trainable)
 
     def setup(self):
@@ -54,6 +55,10 @@ class MobilenetNetworkThin(network_base.BaseNetwork):
              .separable_conv(1, 1, depth2(512), 1, name=prefix + '_L2_4')
              .separable_conv(1, 1, 19, 1, relu=False, name=prefix + '_L2_5'))
 
+            if self.detection:
+                self.feed(prefix + '_L1_4').separable_conv(1,1,2, 1, relu=False, name = prefix + '_bboxL1_5')
+                self.feed(prefix + '_L2_4').separable_conv(1,1,2, 1, relu=False, name = prefix + '_bboxL2_5')
+
             for stage_id in range(5):
                 prefix_prev = 'MConv_Stage%d' % (stage_id + 1)
                 prefix = 'MConv_Stage%d' % (stage_id + 2)
@@ -74,25 +79,46 @@ class MobilenetNetworkThin(network_base.BaseNetwork):
                  .separable_conv(1, 1, depth2(128), 1, name=prefix + '_L2_4')
                  .separable_conv(1, 1, 19, 1, relu=False, name=prefix + '_L2_5'))
 
+                if self.detection:
+                    self.feed(prefix + '_L1_4').separable_conv(1, 1, 2, 1, relu=False, name=prefix + '_bboxL1_5')
+                    self.feed(prefix + '_L2_4').separable_conv(1, 1, 2, 1, relu=False, name=prefix + '_bboxL2_5')
+
             # final result
-            (self.feed('MConv_Stage6_L2_5',
-                       'MConv_Stage6_L1_5')
-             .concat(3, name='concat_stage7'))
+            if not self.detection:
+                (self.feed('MConv_Stage6_L2_5',
+                           'MConv_Stage6_L1_5')
+                 .concat(3, name='concat_stage7'))
+            else:
+                (self.feed('MConv_Stage6_L2_5',
+                           'MConv_Stage6_L1_5',
+                           'MConv_Stage6_bboxL1_5',
+                           'MConv_Stage6_bboxL2_5')
+                 .concat(3, name='concat_stage7'))
 
     def loss_l1_l2(self):
         l1s = []
         l2s = []
+        bbox_l1s = []
+        bbox_l2s = []
         for layer_name in sorted(self.layers.keys()):
             if '_L1_5' in layer_name:
                 l1s.append(self.layers[layer_name])
             if '_L2_5' in layer_name:
                 l2s.append(self.layers[layer_name])
-
-        return l1s, l2s
+            if 'bboxL1_5' in layer_name:
+                bbox_l1s.append(self.layers[layer_name])
+            if 'bboxL2_5' in layer_name:
+                bbox_l2s.append(self.layers[layer_name])
+        if not self.detection:
+            return l1s, l2s
+        else:
+            return l1s, l2s, bbox_l1s, bbox_l2s
 
     def loss_last(self):
-        return self.get_output('MConv_Stage6_L1_5'), self.get_output('MConv_Stage6_L2_5')
-
+        if not self.detection:
+            return self.get_output('MConv_Stage6_L1_5'), self.get_output('MConv_Stage6_L2_5')
+        else:
+            return self.get_output('MConv_Stage6_L1_5'), self.get_output('MConv_Stage6_L2_5'), self.get_output('MConv_Stage6_bboxL1_5'), self.get_output('MConv_Stage6_bboxL2_5')
     def restorable_variables(self):
         vs = {v.op.name: v for v in tf.global_variables() if
               'MobilenetV1/Conv2d' in v.op.name and

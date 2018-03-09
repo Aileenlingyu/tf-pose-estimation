@@ -50,7 +50,6 @@ class CocoMetadata:
         [2, 9,  10, 2,  12, 13, 2, 3, 4, 3,  2, 6, 7, 6,  2, 1,  1,  15, 16],
         [9, 10, 11, 12, 13, 14, 3, 4, 5, 17, 6, 7, 8, 18, 1, 15, 16, 17, 18]
     ))
-
     @staticmethod
     def parse_float(four_np):
         assert len(four_np) == 4
@@ -71,6 +70,8 @@ class CocoMetadata:
         self.width = int(img_meta['width'])
 
         joint_list = []
+        self.bboxes = []
+        # annotations corresponding to many people in one image
         for ann in annotations:
             if ann.get('num_keypoints', 0) == 0:
                 continue
@@ -81,7 +82,8 @@ class CocoMetadata:
             vs = kp[2::3]
 
             joint_list.append([(x, y) if v >= 1 else (-1000, -1000) for x, y, v in zip(xs, ys, vs)])
-
+            bbox = np.array(ann['bbox'])
+            self.bboxes.append(bbox)
         self.joint_list = []
         transform = list(zip(
             [1, 6, 7, 9, 11, 6, 8, 10, 13, 15, 17, 12, 14, 16, 3, 2, 5, 4],
@@ -102,6 +104,46 @@ class CocoMetadata:
             self.joint_list.append(new_joint)
 
         # logger.debug('joint size=%d' % len(self.joint_list))
+
+    def get_bboxmap(self, target_size):
+        bboxmap = np.zeros((2, self.height, self.width), dtype=np.float32)
+
+        for bbox in self.bboxes:
+            p1 = (bbox[0], bbox[1])
+            p2 = (bbox[0] + bbox[2], bbox[1] + bbox[3])
+
+            CocoMetadata.put_bboxmap(bboxmap, 0,  p1, self.sigma)
+            CocoMetadata.put_bboxmap(bboxmap, 1,  p2, self.sigma)
+
+        bboxmap = bboxmap.transpose((1, 2, 0))
+
+        if target_size:
+            bboxmap = cv2.resize(bboxmap, target_size, interpolation=cv2.INTER_AREA)
+
+        return bboxmap.astype(np.float16)
+
+    @staticmethod
+    def put_bboxmap(bbox, plane_idx, center, sigma):
+        center_x, center_y = center
+        _, height, width = bbox.shape[:3]
+
+        th = 4.6052
+        delta = math.sqrt(th * 2)
+
+        x0 = int(max(0, center_x - delta * sigma))
+        y0 = int(max(0, center_y - delta * sigma))
+
+        x1 = int(min(width, center_x + delta * sigma))
+        y1 = int(min(height, center_y + delta * sigma))
+
+        for y in range(y0, y1):
+            for x in range(x0, x1):
+                d = (x - center_x) ** 2 + (y - center_y) ** 2
+                exp = d / 2.0 / sigma / sigma
+                if exp > th:
+                    continue
+                bbox[plane_idx][y][x] = max(bbox[plane_idx][y][x], math.exp(-exp))
+                bbox[plane_idx][y][x] = min(bbox[plane_idx][y][x], 1.0)
 
     def get_heatmap(self, target_size):
         heatmap = np.zeros((CocoMetadata.__coco_parts, self.height, self.width), dtype=np.float32)
@@ -144,6 +186,27 @@ class CocoMetadata:
                     continue
                 heatmap[plane_idx][y][x] = max(heatmap[plane_idx][y][x], math.exp(-exp))
                 heatmap[plane_idx][y][x] = min(heatmap[plane_idx][y][x], 1.0)
+
+    def get_bbox_vectormap(self, target_size):
+        vectormap = np.zeros((2, self.height, self.width), dtype=np.float32)
+        countmap = np.zeros((1, self.height, self.width), dtype=np.int16)
+        for bbox in self.bboxes:
+            center_from = (bbox[0], bbox[1])
+            center_to = (bbox[0] + bbox[2], bbox[1] + bbox[3])
+            CocoMetadata.put_vectormap(vectormap, countmap, 0, center_from, center_to)
+
+        vectormap = vectormap.transpose((1, 2, 0))
+        nonzeros = np.nonzero(countmap)
+        for p, y, x in zip(nonzeros[0], nonzeros[1], nonzeros[2]):
+            if countmap[p][y][x] <= 0:
+                continue
+            vectormap[y][x][p * 2 + 0] /= countmap[p][y][x]
+            vectormap[y][x][p * 2 + 1] /= countmap[p][y][x]
+
+        if target_size:
+            vectormap = cv2.resize(vectormap, target_size, interpolation=cv2.INTER_AREA)
+
+        return vectormap.astype(np.float16)
 
     def get_vectormap(self, target_size):
         vectormap = np.zeros((CocoMetadata.__coco_parts*2, self.height, self.width), dtype=np.float32)
