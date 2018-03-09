@@ -102,7 +102,7 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
             s = '%dx%d' % (placeholder_input.shape[2], placeholder_input.shape[1])
             ckpts = {
                 'mobilenet': 'trained/mobilenet_%s/model-53008' % s,
-                'mobilenet_thin': 'trained/mobilenet_thin_v2_kernel_7/model-33000',
+                'mobilenet_thin': 'trained/mobilenet_joint_upper/model-37000',
                 'mobilenet_fast': 'trained/mobilenet_fast_%s/model-189000' % s,
                 'mobilenet_accurate': 'trained/mobilenet_accurate/model-170000',
                 'vgg16x4' : 'trained/vgg16x4_0.75/model-35000',
