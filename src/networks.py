@@ -1,10 +1,10 @@
 import os
-
 import tensorflow as tf
 from network_mobilenet import MobilenetNetwork
 from network_mobilenet_thin import MobilenetNetworkThin
 from network_mobilenet_thin_fatbranch import MobilenetNetworkThinFatBranch
 from network_mobilenet_zaikun import MobilenetNetworkZaikun
+from network_mobilenet_zaikun_side import MobilenetNetworkZaikunSide
 
 from network_mobilenet_thin_upsampling import MobilenetNetworkThinUp
 from network_mobilenet_thin_dilate import MobilenetNetworkThinDilate
@@ -59,6 +59,11 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
         net = MobilenetNetworkZaikun({'image': placeholder_input}, conv_width=0.75, conv_width2=0.50, trainable=trainable)
         pretrain_path = 'pretrained/mobilenet_v1_0.75_224_2017_06_14/mobilenet_v1_0.75_224.ckpt'
         last_layer = 'MConv_Stage4_L{aux}_5'
+
+    elif type == 'mobilenet_zaikun_side':
+        net = MobilenetNetworkZaikunSide({'image': placeholder_input}, conv_width=0.75, conv_width2=0.50, trainable=trainable)
+        pretrain_path = 'pretrained/mobilenet_v1_0.75_224_2017_06_14/mobilenet_v1_0.75_224.ckpt'
+        last_layer = 'MConv_Stage2_L{aux}_5'
 
     elif type == 'mobilenet_thin_fatbranch':
         net = MobilenetNetworkThinFatBranch({'image': placeholder_input}, conv_width=0.75, conv_width2=0.50, trainable=trainable)
