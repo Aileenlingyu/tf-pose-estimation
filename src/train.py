@@ -58,8 +58,8 @@ if __name__ == '__main__':
     detection = args.do_detection
 
     if args.model in ['cmu', 'vgg', 'mobilenet_thin_dilate' ,'mobilenet_thin', 'mobilenet_thin_up' ,
-                      'vgg16x4', 'vgg16x5', 'mobilenet_fast', 'resnet32' , 'mobilenet_accurate',
-                      'mobilenet_v2', 'hybridnet_try']:
+                      'vgg16x4', 'vgg16x4_stage2', 'mobilenet_fast', 'resnet32' , 'mobilenet_accurate',
+                      'mobilenet_v2', 'mobilenet_thin_fatbranch']:
         scale = 8
 
     set_network_scale(scale)

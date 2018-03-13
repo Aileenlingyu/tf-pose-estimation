@@ -3,11 +3,12 @@ import os
 import tensorflow as tf
 from network_mobilenet import MobilenetNetwork
 from network_mobilenet_thin import MobilenetNetworkThin
+from network_mobilenet_thin_fatbranch import MobilenetNetworkThinFatBranch
+
 from network_mobilenet_thin_upsampling import MobilenetNetworkThinUp
 from network_mobilenet_thin_dilate import MobilenetNetworkThinDilate
 from network_vgg16x4 import VGG16x4Network
-from network_vgg16x5 import VGG16x5Network
-
+from network_vgg16x4_stage2 import VGG16x4NetworkStage2
 from network_cmu import CmuNetwork
 from network_mobilenet_v2_tf import MobilenetNetworkV2
 from network_mobilenet_v2_all import MobilenetNetworkV2All
@@ -53,6 +54,12 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
         pretrain_path = 'pretrained/mobilenet_v1_0.75_224_2017_06_14/mobilenet_v1_0.75_224.ckpt'
         last_layer = 'MConv_Stage6_L{aux}_5'
 
+    elif type == 'mobilenet_thin_fatbranch':
+        net = MobilenetNetworkThinFatBranch({'image': placeholder_input}, conv_width=0.75, conv_width2=0.50, trainable=trainable)
+        pretrain_path = 'pretrained/mobilenet_v1_0.75_224_2017_06_14/mobilenet_v1_0.75_224.ckpt'
+        last_layer = 'Mconv7_stage6_L{aux}'
+
+
     elif type == 'mobilenet_thin_up':
         net = MobilenetNetworkThinUp({'image': placeholder_input}, conv_width=0.75, conv_width2=0.50, trainable=trainable)
         pretrain_path = 'pretrained/mobilenet_v1_0.75_224_2017_06_14/mobilenet_v1_0.75_224.ckpt'
@@ -89,10 +96,10 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
         pretrain_path = 'numpy/vgg16x4.npy'
         last_layer = 'Mconv7_stage6_L{aux}'
 
-    elif type == 'vgg16x5':
-        net = VGG16x5Network({'image': placeholder_input}, conv_width=0.75, conv_width2=1, trainable=trainable)
-        pretrain_path = 'numpy/vgg16x5.npy'
-        last_layer = 'Mconv7_stage6_L{aux}'
+    elif type == 'vgg16x4_stage2':
+        net = VGG16x4NetworkStage2({'image': placeholder_input}, conv_width=0.75, conv_width2=1, trainable=trainable)
+        pretrain_path = 'numpy/vgg16x4.npy'
+        last_layer = 'Mconv7_stage2_L{aux}'
     else:
         raise Exception('Invalid Mode.')
 
