@@ -387,6 +387,9 @@ class BaseNetwork(object):
                 output = tf.add(input, output)
         return output
 
+    # @layer
+    # def upsmaple(self, input, k_h, k_w, c_o, name, batchnorm=bachnorm):
+    #     return conv2d_transpose()
     @layer
     def atrous_conv(self,
                     input,

@@ -34,14 +34,14 @@ class MobilenetNetworkZaikunSide(network_base.BaseNetwork):
              )
 
         (self.feed('Conv2d_1').max_pool(2,2,2,2, name = 'Conv2d_1_down'))
-        (self.feed('Conv2d_7').upsample(2, name='Conv2d_7_up'))
+       # (self.feed('Conv2d_7').upsample(2, name='Conv2d_7_up'))
 
-        (self.feed('Conv2d_3', 'Conv2d_1_down', 'Conv2d_7_up')
+        self.feed('Conv2d_3', 'Conv2d_1_down')\
             .concat(3, name='feat_concat')
-            .separable_conv(3,3 ,depth(512), 2, name = 'feat_small'))
+        #     .separable_conv(3,3 ,depth(512), 2, name = 'feat_small')
 
         feature_lv = 'feat_concat'
-        feature_sm = 'feat_small'
+        feature_sm = 'Conv2d_7'
         with tf.variable_scope(None, 'Openpose'):
             prefix = 'small'
             (self.feed(feature_sm)
@@ -62,16 +62,16 @@ class MobilenetNetworkZaikunSide(network_base.BaseNetwork):
             prefix = 'large'
             (self.feed(feature_lv)
              .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L1_1')
-             .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L1_2')
-             .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L1_3')
-             .separable_conv(1, 1, depth2(512), 1, name=prefix + '_L1_4')
+             # .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L1_2')
+             # .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L1_3')
+             # .separable_conv(1, 1, depth2(128), 1, name=prefix + '_L1_4')
              .separable_conv(1, 1, 38, 1, relu=False, name=prefix + '_L1_5'))
 
             (self.feed(feature_lv)
              .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L2_1')
-             .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L2_2')
-             .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L2_3')
-             .separable_conv(1, 1, depth2(512), 1, name=prefix + '_L2_4')
+             # .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L2_2')
+             # .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L2_3')
+             # .separable_conv(1, 1, depth2(128), 1, name=prefix + '_L2_4')
              .separable_conv(1, 1, 19, 1, relu=False, name=prefix + '_L2_5'))
 
 
