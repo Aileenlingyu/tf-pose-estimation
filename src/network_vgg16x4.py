@@ -40,9 +40,9 @@ class VGG16x4Network(network_base.BaseNetwork):
              .conv(3, 1, 175, 1, 1, relu=False, name='conv4_1_V')
              .conv(1, 3, 175, 1, 1, relu=False, name='conv4_1_H')
              .conv(1, 1, 482, 1, 1, name='conv4_1_P')
-             .conv(3, 1, 192, 1, 1, relu=False, name='conv4_2_V')
-             .conv(1, 3, 192, 1, 1, relu=False, name='conv4_2_H')
-             .conv(1, 1, 457, 1, 1, name='conv4_2_P')
+             # .conv(3, 1, 192, 1, 1, relu=False, name='conv4_2_V')
+             # .conv(1, 3, 192, 1, 1, relu=False, name='conv4_2_H')
+             # .conv(1, 1, 457, 1, 1, name='conv4_2_P')
 
              .conv(1, 3, depth2(256), 1, 1, name='conv4_3_CPM')
              .conv(1, 1, depth2(128), 1, 1, name='conv4_4_CPM')

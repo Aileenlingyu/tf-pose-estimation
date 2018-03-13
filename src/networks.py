@@ -49,7 +49,7 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
         last_layer = 'MConv_Stage6_L{aux}_5'
 
     elif type == 'mobilenet_thin':
-        net = MobilenetNetworkThin({'image': placeholder_input}, conv_width=0.75, conv_width2=0.50, trainable=trainable, detection=True)
+        net = MobilenetNetworkThin({'image': placeholder_input}, conv_width=0.75, conv_width2=0.50, trainable=trainable)
         pretrain_path = 'pretrained/mobilenet_v1_0.75_224_2017_06_14/mobilenet_v1_0.75_224.ckpt'
         last_layer = 'MConv_Stage6_L{aux}_5'
 
@@ -73,9 +73,10 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
         net = CmuNetwork({'image': placeholder_input}, trainable=trainable)
         pretrain_path = 'numpy/openpose_coco.npy'
         se = 'Mconv7_stage6_L{aux}'
+
     elif type == 'vgg':
         net = CmuNetwork({'image': placeholder_input}, trainable=trainable)
-        pretrain_path = 'numpy/openpose_vgg16.npy'
+        pretrain_path = 'numpy/openpose_coco.npy'
         last_layer = 'Mconv7_stage6_L{aux}'
 
     elif type == 'resnet32':
@@ -102,12 +103,12 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
             s = '%dx%d' % (placeholder_input.shape[2], placeholder_input.shape[1])
             ckpts = {
                 'mobilenet': 'trained/mobilenet_%s/model-53008' % s,
-                'mobilenet_thin': 'trained/mobilenet_thin_v2_kernel_7/model-33000',
+                'mobilenet_thin': 'trained/mobilenet_thin_432x368_stride5/model-26000',
                 'mobilenet_fast': 'trained/mobilenet_fast_%s/model-189000' % s,
                 'mobilenet_accurate': 'trained/mobilenet_accurate/model-170000',
                 'vgg16x4' : 'trained/vgg16x4_0.75/model-35000',
-                'vgg16x5': 'trained/vgg16x5/model-32000'
-
+                'vgg16x5': 'trained/vgg16x5/model-32000',
+                'vgg': 'trained/vgg/model-31000'
             }
             loader = tf.train.Saver()
             loader.restore(sess_for_load, os.path.join(_get_base_path(), ckpts[type]))
@@ -118,14 +119,10 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
 def get_graph_path(model_name):
     return {
         'cmu_640x480': './models/graph/cmu_640x480/graph_opt.pb',
-        'cmuq_640x480': './models/graph/cmu_640x480/graph_q.pb',
-
-        'cmu_640x360': './models/graph/cmu_640x360/graph_opt.pb',
-        'cmuq_640x360': './models/graph/cmu_640x360/graph_q.pb',
-        'mobilenet_thinwide_368x368': './model/mobilenet_thin_wide/graph_opt_mobilenet_26000.pb',
+        'vgg_656x368'        : './models/graph/vgg/graph_zaikun_opt.pb',
+        'vggx4_368x368': './models/graph/vgg16x4/graph_vgg16x4_opt.pb',
+        'mobilenet_zaikun_656x368': './models/graph/mobilenet_thin_432x368/graph_zaikun_opt.pb',
         'mobilenet_thin_432x368': './models/graph/mobilenet_thin_432x368/graph_opt.pb',
-        'mobilenet_368x368': './model/mobilenet_batch:16/graph_opt_mobilenet_35005_batch_16.pb',
-
     }[model_name]
 
 
