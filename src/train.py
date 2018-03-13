@@ -310,7 +310,7 @@ if __name__ == '__main__':
                             validation_cache.append((images_test, heatmaps, vectmaps))
                     else:
                         for image_test, heatmaps, vectmaps, two_heatmaps, two_vectmaps in tqdm(df_valid.get_data()):
-                            validation_cache.append((image_test, heatmaps, vectmaps, two_heatmaps, two_vectmaps))
+                            validation_cache.append((image_test, heatmaps, vectmaps))
 
                     df_valid.reset_state()
                     del df_valid
