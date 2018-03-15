@@ -38,7 +38,6 @@ if __name__ == '__main__':
 
     while True:
         ret_val, image = cam.read()
-        image = (image /255.0 -0.5) * 2
         logger.debug('image preprocess+')
         if args.zoom < 1.0:
             canvas = np.zeros_like(image)

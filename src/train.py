@@ -45,7 +45,8 @@ if __name__ == '__main__':
     parser.add_argument('--input-width', type=int, default=368)
     parser.add_argument('--input-height', type=int, default=368)
     parser.add_argument('--parts', type=int, default=19)
-    parser.add_argument('--do_ms', type=bool, default=True)
+    parser.add_argument('--do_ms', type=bool, default=False)
+    parser.add_argument('--lr_constant', type=bool, default=True)
 
     args = parser.parse_args()
 
@@ -56,7 +57,6 @@ if __name__ == '__main__':
     set_network_input_wh(args.input_width, args.input_height)
     scale = 4
     ms = args.do_ms
-
     if args.model in ['cmu', 'vgg', 'mobilenet_thin_dilate' ,'mobilenet_thin', 'mobilenet_thin_up' ,
                       'vgg16x4', 'vgg16x4_stage2', 'mobilenet_fast', 'mobilenet_ms' , 'mobilenet_accurate',
                       'mobilenet_v2', 'mobilenet_thin_fatbranch', 'mobilenet_zaikun', 'mobilenet_zaikun_side']:
@@ -72,9 +72,6 @@ if __name__ == '__main__':
         input_node = tf.placeholder(tf.float32, shape=(args.batchsize, args.input_height, args.input_width, 3), name='image')
         vectmap_node = tf.placeholder(tf.float32, shape=(args.batchsize, output_h, output_w, args.parts * 2), name='vectmap')
         heatmap_node = tf.placeholder(tf.float32, shape=(args.batchsize, output_h, output_w, args.parts), name='heatmap')
-        # vectmapx2_node = tf.placeholder(tf.float32, shape=(args.batchsize, output_h * 2, output_w * 2, args.parts * 2), name='vectmap')
-        # heatmapx2_node = tf.placeholder(tf.float32, shape=(args.batchsize, output_h * 2, output_w * 2, args.parts),name='heatmap')
-        #
         two_vectormap_node = tf.placeholder(tf.float32, shape=(args.batchsize, output_h * 2, output_w * 2, args.parts * 2), name = "two_vectmap")
         two_headmap_node = tf.placeholder(tf.float32, shape=(args.batchsize, output_h * 2, output_w * 2, args.parts), name = "two_heatmap")
 
@@ -101,9 +98,7 @@ if __name__ == '__main__':
     logger.info(q_inp)
     logger.info(q_heat)
     logger.info(q_vect)
-    logger.info(q_two_heat)
-    logger.info(q_two_vect)
-
+    logger.info(ms)
     # define model for multi-gpu
     if not ms :
         q_inp_split, q_heat_split, q_vect_split = tf.split(q_inp, args.gpus), tf.split(q_heat, args.gpus), tf.split(q_vect, args.gpus)
@@ -192,7 +187,7 @@ if __name__ == '__main__':
         if ',' not in args.lr:
             starter_learning_rate = float(args.lr)
             learning_rate = tf.train.exponential_decay(starter_learning_rate, global_step,
-                                                       decay_steps=args.decay_steps * 96/ args.batchsize, decay_rate=0.33, staircase=True)
+                                                       decay_steps=args.decay_steps * 96/ args.batchsize, decay_rate=1.0, staircase=True)
         else:
             lrs = [float(x) for x in args.lr.split(',')]
             boundaries = [step_per_epoch * 5 * i for i, _ in range(len(lrs)) if i > 0]
