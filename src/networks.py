@@ -52,12 +52,12 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
         last_layer = 'MConv_Stage6_L{aux}_5'
 
     elif type == 'mobilenet_thin':
-        net = MobilenetNetworkThin({'image': placeholder_input}, conv_width=0.75, conv_width2=0.50, trainable=trainable)
+        net = MobilenetNetworkThin({'image': placeholder_input}, conv_width=0.75, conv_width2=0.750, trainable=trainable)
         pretrain_path = 'pretrained/mobilenet_v1_0.75_224_2017_06_14/mobilenet_v1_0.75_224.ckpt'
         last_layer = 'MConv_Stage6_L{aux}_5'
 
     elif type == 'mobilenet_zaikun':
-        net = MobilenetNetworkZaikun({'image': placeholder_input}, conv_width=0.75, conv_width2=0.50, trainable=trainable)
+        net = MobilenetNetworkZaikun({'image': placeholder_input}, conv_width=0.75, conv_width2=0.750, trainable=trainable)
         pretrain_path = 'pretrained/mobilenet_v1_0.75_224_2017_06_14/mobilenet_v1_0.75_224.ckpt'
         last_layer = 'MConv_Stage4_L{aux}_5'
 
@@ -126,8 +126,8 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
             s = '%dx%d' % (placeholder_input.shape[2], placeholder_input.shape[1])
             ckpts = {
                 'mobilenet': 'trained/mobilenet_%s/model-53008' % s,
-                'mobilenet_thin': '../model/mobilenet_thin_batch:32_lr:0.001_gpus:4_320x240_/model-25000',
-                #'mobilenet_thin' : 'trained/mobilenet_thin_320x240/model-7000',
+                #'mobilenet_thin': '../model/mobilenet_thin_batch:32_lr:0.001_gpus:4_320x240_fix_lr=0.001/model-48003',
+                'mobilenet_thin' : 'trained/mobilenet_thin_432x368/model-12000',
                 'mobilenet_fast': 'trained/mobilenet_fast_%s/model-189000' % s,
                 'mobilenet_accurate': 'trained/mobilenet_accurate/model-170000',
                 'mobilenet_zaikun_side' : 'trained/mobilenet_zaikun_side/model-48000',
@@ -149,8 +149,10 @@ def get_graph_path(model_name):
         'mobilenet_zaikun_side_656x368' : './models/graph/mobilenet_zaikun_side/graph_opt.pb' ,
         'vggx4_368x368': './models/graph/vgg16x4/graph_vgg16x4_opt.pb',
         'mobilenet_zaikun_656x368': './models/graph/mobilenet_thin_432x368/graph_zaikun_opt.pb',
-        'mobilenet_thin_432x368': './models/graph/mobilenet_thin_432x368/graph_opt.pb',
+        'mobilenet_thin_432x368': './models/graph/mobilenet_thinzaikun_432x368/graph_opt.pb',
         'mobilenet_thin_368x368' : './models/graph/mobilenet_thin320240_368x368/graph_opt.pb',
+        'mobilenet_thin_656x368': './models/graph/mobilenet_thin320240_656x368/graph_opt.pb',
+
     }[model_name]
 
 

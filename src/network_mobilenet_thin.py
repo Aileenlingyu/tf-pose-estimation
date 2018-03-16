@@ -66,16 +66,16 @@ class MobilenetNetworkThin(network_base.BaseNetwork):
                            prefix_prev + '_L2_5',
                            feature_lv)
                  .concat(3, name=prefix + '_concat')
-                 .separable_conv(7, 7, depth2(128), 1, name=prefix + '_L1_1')
-                 .separable_conv(7, 7, depth2(128), 1, name=prefix + '_L1_2')
-                 .separable_conv(7, 7, depth2(128), 1, name=prefix + '_L1_3')
+                 .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L1_1')
+                 .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L1_2')
+                 .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L1_3')
                  .separable_conv(1, 1, depth2(128), 1, name=prefix + '_L1_4')
                  .separable_conv(1, 1, 38, 1, relu=False, name=prefix + '_L1_5'))
 
                 (self.feed(prefix + '_concat')
-                 .separable_conv(7, 7, depth2(128), 1, name=prefix + '_L2_1')
-                 .separable_conv(7, 7, depth2(128), 1, name=prefix + '_L2_2')
-                 .separable_conv(7, 7, depth2(128), 1, name=prefix + '_L2_3')
+                 .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L2_1')
+                 .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L2_2')
+                 .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L2_3')
                  .separable_conv(1, 1, depth2(128), 1, name=prefix + '_L2_4')
                  .separable_conv(1, 1, 19, 1, relu=False, name=prefix + '_L2_5'))
 
