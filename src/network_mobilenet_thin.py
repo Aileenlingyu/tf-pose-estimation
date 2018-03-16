@@ -17,6 +17,7 @@ class MobilenetNetworkThin(network_base.BaseNetwork):
 
         with tf.variable_scope(None, 'MobilenetV1'):
             (self.feed('image')
+             .normalize_mobilenet(name = 'preprocess')
              .convb(3, 3, depth(32), 2, name='Conv2d_0')
              .separable_conv(3, 3, depth(64), 1, name='Conv2d_1')
              .separable_conv(3, 3, depth(128), 2, name='Conv2d_2')
