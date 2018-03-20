@@ -30,6 +30,7 @@ if __name__ == '__main__':
 
     logger.debug('initialization %s : %s' % (args.model, get_graph_path(args.model)))
     w, h = model_wh(args.model)
+    logger.info(get_graph_path(args.model));
     e = TfPoseEstimator(get_graph_path(args.model), target_size=(w, h))
     logger.debug('cam read+')
     cam = cv2.VideoCapture(args.camera)
