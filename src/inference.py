@@ -106,5 +106,5 @@ if __name__ == '__main__':
 
         cv2.imshow('result', convas)
         cv2.waitKey(0)
-
+        #cv2.imwrite(args.model + args.imgpath, image)
         tf.train.write_graph(sess.graph_def, '.', 'graph-tmp.pb', as_text=True)
