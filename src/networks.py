@@ -56,6 +56,11 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
         pretrain_path = 'pretrained/mobilenet_v1_0.75_224_2017_06_14/mobilenet_v1_0.75_224.ckpt'
         last_layer = 'MConv_Stage6_L{aux}_5'
 
+    elif type == 'mobilenet_thin_shortcut':
+        net = MobilenetNetworkThinShortcut({'image': placeholder_input}, conv_width=0.75, conv_width2=0.750, trainable=trainable)
+        pretrain_path = 'pretrained/mobilenet_v1_0.75_224_2017_06_14/mobilenet_v1_0.75_224.ckpt'
+        last_layer = 'MConv_Stage6_L{aux}_5'
+
     elif type == 'mobilenet_zaikun':
         net = MobilenetNetworkZaikun({'image': placeholder_input}, conv_width=0.75, conv_width2=0.750, trainable=trainable)
         pretrain_path = 'pretrained/mobilenet_v1_0.75_224_2017_06_14/mobilenet_v1_0.75_224.ckpt'
@@ -75,7 +80,6 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
         net = MobilenetNetworkThinFatBranch({'image': placeholder_input}, conv_width=0.75, conv_width2=0.50, trainable=trainable)
         pretrain_path = 'pretrained/mobilenet_v1_0.75_224_2017_06_14/mobilenet_v1_0.75_224.ckpt'
         last_layer = 'Mconv7_stage6_L{aux}'
-
 
     elif type == 'mobilenet_thin_up':
         net = MobilenetNetworkThinUp({'image': placeholder_input}, conv_width=0.75, conv_width2=0.50, trainable=trainable)
@@ -132,7 +136,7 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
                 'mobilenet_accurate': 'trained/mobilenet_accurate/model-170000',
                 'mobilenet_thin_dilate': 'trained/mobilenet_thin_dilate/model-28000',
                 'mobilenet_zaikun_side' : 'trained/mobilenet_zaikun_side/model-48000',
-                'mobilenet_fast': 'trained/mobilenet_fast/model-44001',
+                'mobilenet_fast': 'trained/mobilenet_fast/model-46001',
                 'mobilenet_ms': 'trained/mobilenet_ms/model-10000',
                 'vgg16x4' : 'trained/vgg16x4_0.75/model-35000',
                 'vgg16x5': 'trained/vgg16x5/model-32000',
