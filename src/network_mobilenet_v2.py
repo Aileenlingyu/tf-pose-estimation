@@ -19,18 +19,18 @@ class MobilenetNetworkV2(network_base.BaseNetwork):
                 .inverted_bottleneck( 6, 32, 1, name = "InvertedResidual_32_0")\
                 .inverted_bottleneck( 6, 32, 0, name = "InvertedResidual_32_1")\
                 .inverted_bottleneck( 6, 32, 0, name = "InvertedResidual_32_2")\
-                .inverted_bottleneck( 6, 64, 1, name = "InvertedResidual_64_0")\
+                .inverted_bottleneck( 6, 64, 0, name = "InvertedResidual_64_0")\
                 .inverted_bottleneck( 6, 64, 0, name = "InvertedResidual_64_1")\
                 .inverted_bottleneck( 6, 64, 0, name = "InvertedResidual_64_2")\
                 .inverted_bottleneck( 6, 64, 0, name = "InvertedResidual_64_3")\
                 .inverted_bottleneck( 6, 96, 0, name = "InvertedResidual_96_0")\
                 .inverted_bottleneck( 6, 96, 0, name = "InvertedResidual_96_1")\
                 .inverted_bottleneck( 6, 96, 0, name = "InvertedResidual_96_2") \
-                .inverted_bottleneck( 6, 160,0, name = "InvertedResidual_160_0") \
-                .inverted_bottleneck( 6, 160,0, name = "InvertedResidual_160_1")\
-                .inverted_bottleneck( 6, 160,0, name = "InvertedResidual_160_2") \
+                # .inverted_bottleneck( 6, 160,0, name = "InvertedResidual_160_0") \
+                # .inverted_bottleneck( 6, 160,0, name = "InvertedResidual_160_1")\
+                # .inverted_bottleneck( 6, 160,0, name = "InvertedResidual_160_2") \
 
-        feature_lv = 'InvertedResidual_160_2'
+        feature_lv = 'InvertedResidual_96_2'
         with tf.variable_scope('Openpose'):
             prefix = 'MConv_Stage1'
             (self.feed(feature_lv)

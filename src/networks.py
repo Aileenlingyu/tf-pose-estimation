@@ -131,7 +131,7 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
                 'mobilenet': 'trained/mobilenet_%s/model-53008' % s,
                 #'mobilenet_thin': '../model/mobilenet_thin_batch:32_lr:0.001_gpus:4_320x240_fix_lr=0.001/model-48003',
                 'mobilenet_thin' : 'trained/mobilenet_thin_432x368/model-160001',
-                'mobilenet_v2': 'trained/mobilenet_v2/model-60000',
+                'mobilenet_v2': 'trained/mobilenet_v2/model-45000',
                 # 'mobilenet_fast': 'trained/mobilenet_fast_%s/model-189000' % s,
                 'mobilenet_accurate': 'trained/mobilenet_accurate/model-69000',
                 'mobilenet_thin_dilate': 'trained/mobilenet_thin_dilate/model-28000',

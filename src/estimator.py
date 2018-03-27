@@ -90,11 +90,11 @@ class PoseEstimator:
     heatmap_gaussian = False
     adaptive_threshold = False
 
-    NMS_Threshold = 0.1
-    Local_PAF_Threshold = 0.1
+    NMS_Threshold = 0.15
+    Local_PAF_Threshold = 0.2
     PAF_Count_Threshold = 5
     Part_Count_Threshold = 4
-    Part_Score_Threshold = 0.6
+    Part_Score_Threshold = 4.5
 
     # NMS_Threshold = 0.1
     # Local_PAF_Threshold = 0.5
@@ -186,7 +186,7 @@ class PoseEstimator:
     @staticmethod
     def score_pairs(part_idx1, part_idx2, coord_list1, coord_list2, paf_mat_x, paf_mat_y, heatmap, rescale=(1.0, 1.0)):
         connection_temp = []
-
+       # print(coord_list1)
         cnt = 0
         for idx1, (y1, x1) in enumerate(zip(coord_list1[0], coord_list1[1])):
             for idx2, (y2, x2) in enumerate(zip(coord_list2[0], coord_list2[1])):
@@ -297,6 +297,7 @@ class TfPoseEstimator:
         image_h, image_w = npimg.shape[:2]
         centers = {}
         for human in humans:
+            print(human)
             # draw point
             for i in range(common.CocoPart.Background.value):
                 if i not in human.body_parts.keys():
