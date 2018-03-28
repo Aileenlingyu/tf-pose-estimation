@@ -51,7 +51,7 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
         last_layer = 'MConv_Stage6_L{aux}_5'
 
     elif type == 'mobilenet_thin':
-        net = MobilenetNetworkThin({'image': placeholder_input}, conv_width=0.75, conv_width2=0.750, trainable=trainable)
+        net = MobilenetNetworkThin({'image': placeholder_input}, conv_width=0.75, conv_width2=0.50, trainable=trainable)
         pretrain_path = 'pretrained/mobilenet_v1_0.75_224_2017_06_14/mobilenet_v1_0.75_224.ckpt'
         last_layer = 'MConv_Stage6_L{aux}_5'
 
@@ -130,13 +130,13 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
             ckpts = {
                 'mobilenet': 'trained/mobilenet_%s/model-53008' % s,
                 #'mobilenet_thin': '../model/mobilenet_thin_batch:32_lr:0.001_gpus:4_320x240_fix_lr=0.001/model-48003',
-                'mobilenet_thin' : 'trained/mobilenet_thin_432x368/model-160001',
-                'mobilenet_v2': 'trained/mobilenet_v2/model-45000',
-                # 'mobilenet_fast': 'trained/mobilenet_fast_%s/model-189000' % s,
+                #'mobilenet_thin' : 'trained/mobilenet_thin_432x368/model-160001',
+                'mobilenet_v2': 'trained/mobilenet_v2/model-58001',
                 'mobilenet_accurate': 'trained/mobilenet_accurate/model-69000',
                 'mobilenet_thin_dilate': 'trained/mobilenet_thin_dilate/model-28000',
                 'mobilenet_zaikun_side' : 'trained/mobilenet_zaikun_side/model-48000',
-                'mobilenet_fast': 'trained/mobilenet_fast/model-46001',
+                'mobilenet_fast': 'trained/mobilenet_fast/model-37001',
+                'mobilenet_thin': 'trained/mobilenet_thin_0.5_432x368/model-77000',
                 'mobilenet_ms': 'trained/mobilenet_ms/model-10000',
                 'vgg16x4' : 'trained/vgg16x4_0.75/model-35000',
                 'vgg16x5': 'trained/vgg16x5/model-32000',

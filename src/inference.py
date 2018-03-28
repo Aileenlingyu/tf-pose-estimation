@@ -103,7 +103,7 @@ if __name__ == '__main__':
         convas = np.zeros([480, 640 + neww, 3], dtype=np.uint8)
         convas[:, :640] = process_img
         convas[:, 640:] = image
-
+        #
         # cv2.imshow('result', convas)
         # cv2.waitKey(0)
         cv2.imwrite(args.model + args.imgpath.split('/')[-1], image)

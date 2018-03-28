@@ -144,7 +144,6 @@ class PoseEstimator:
         for plain in heat_mat[:-1]:
             nms = PoseEstimator.non_max_suppression(plain, 5, _NMS_Threshold)
             coords.append(np.where(nms >= _NMS_Threshold))
-        print("hetamap shape is {}x{}".format(heat_mat.shape[1], heat_mat.shape[2]))
         pairs_by_conn = list()
         for (part_idx1, part_idx2), (paf_x_idx, paf_y_idx) in zip(CocoPairs, CocoPairsNetwork):
             pairs = PoseEstimator.score_pairs(
@@ -297,7 +296,6 @@ class TfPoseEstimator:
         image_h, image_w = npimg.shape[:2]
         centers = {}
         for human in humans:
-            print(human)
             # draw point
             for i in range(common.CocoPart.Background.value):
                 if i not in human.body_parts.keys():
