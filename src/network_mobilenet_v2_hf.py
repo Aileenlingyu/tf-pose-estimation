@@ -25,9 +25,10 @@ class MobilenetNetworkV2Hyperfeature(network_base.BaseNetwork):
                 .inverted_bottleneck( 6, 64, 0, name = "InvertedResidual_64_3")\
                 .inverted_bottleneck( 6, 96, 0, name = "InvertedResidual_96_0")\
                 .inverted_bottleneck( 6, 96, 0, name = "InvertedResidual_96_1")\
-                .inverted_bottleneck( 6, 96, 0, name = "InvertedResidual_96_2")\
-                .inverted_bottleneck( 6, 160, 0,name = "InvertedResidual_160_0")\
+                .inverted_bottleneck( 6, 96, 0, name = "InvertedResidual_96_2") \
 
+        self.feed('InvertedResidual_24_1').max_pool(2, 2, 2, 2, name='block_3_pool')
+        self.feed('block_3_pool', 'InvertedResidual_32_2', 'InvertedResidual_96_2').concat(3, name='feature_concat')
         feature_lv = 'feature_concat'
         with tf.variable_scope('Openpose'):
             prefix = 'MConv_Stage1'
@@ -52,16 +53,16 @@ class MobilenetNetworkV2Hyperfeature(network_base.BaseNetwork):
                            prefix_prev + '_L2_5',
                            feature_lv)
                  .concat(3, name=prefix + '_concat')
-                 .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L1_1')
-                 .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L1_2')
-                 .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L1_3')
+                 .separable_conv(7, 7, depth2(128), 1, name=prefix + '_L1_1')
+                 .separable_conv(7, 7, depth2(128), 1, name=prefix + '_L1_2')
+                 .separable_conv(7, 7, depth2(128), 1, name=prefix + '_L1_3')
                  .separable_conv(1, 1, depth2(128), 1, name=prefix + '_L1_4')
                  .separable_conv(1, 1, 38, 1, relu=False, name=prefix + '_L1_5'))
 
                 (self.feed(prefix + '_concat')
-                 .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L2_1')
-                 .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L2_2')
-                 .separable_conv(3, 3, depth2(128), 1, name=prefix + '_L2_3')
+                 .separable_conv(7, 7, depth2(128), 1, name=prefix + '_L2_1')
+                 .separable_conv(7, 7, depth2(128), 1, name=prefix + '_L2_2')
+                 .separable_conv(7, 7, depth2(128), 1, name=prefix + '_L2_3')
                  .separable_conv(1, 1, depth2(128), 1, name=prefix + '_L2_4')
                  .separable_conv(1, 1, 19, 1, relu=False, name=prefix + '_L2_5'))
 
