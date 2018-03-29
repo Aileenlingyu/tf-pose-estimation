@@ -137,6 +137,7 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
                 'mobilenet_zaikun_side' : 'trained/mobilenet_zaikun_side/model-48000',
                 'mobilenet_fast': 'trained/mobilenet_fast/model-37001',
                 'mobilenet_thin': 'trained/mobilenet_thin_0.5_432x368/model-77000',
+                #'mobilenet_thin': 'trained/mobilenet_thin_benchmark/model-388003',
                 'mobilenet_ms': 'trained/mobilenet_ms/model-10000',
                 'vgg16x4' : 'trained/vgg16x4_0.75/model-35000',
                 'vgg16x5': 'trained/vgg16x5/model-32000',
