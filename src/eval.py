@@ -25,11 +25,10 @@ config.gpu_options.allow_growth = True
 
 def write_coco_json(human, image_w, image_h):
     keypoints = []
-
     for i in [0, 15,14,17,16,5, 2, 6, 3,7,4, 11, 8, 12, 9,13,10]:
-        if i not in human.body_parts.keys():
-            keypoints.extend([0,0, 0])
-            continue
+        # if i not in human.body_parts.keys():
+        #     keypoints.extend([0,0, 0])
+        #     continue
         body_part = human.body_parts[i]
         center = (int(body_part.x * image_w + 0.5), int(body_part.y * image_h + 0.5))
         keypoints.append(center[0])
@@ -40,13 +39,13 @@ def write_coco_json(human, image_w, image_h):
 
 def compute_oks(keypoints, anns):
     max_score = 0
+    max_visible = []
     for ann in anns:
         score = 0
         gt = ann['keypoints']
         visible = gt[2::3]
-        visible = [x > 0 for x in visible]
         if np.sum(visible) == 0:
-            continue
+            continue;
         else:
             gt_point = np.array([(x, y) for x , y in zip(gt[0::3], gt[1::3])])
             pred = np.array([(x, y) for x , y in zip(keypoints[0::3], keypoints[1::3])])
@@ -57,13 +56,17 @@ def compute_oks(keypoints, anns):
             sp = np.sqrt(ann['area'])
 
             for i in range(17):
-                score = score + visible[i] * np.exp(-dist[i] * dist[i] / 2.0 / sp/sp)
+                score = score if visible[i]== 0 else score +  np.exp(-dist[i] * dist[i] / 2.0 / sp/sp)
 
-        max_score = max(score/np.sum(visible), max_score)
-    return  max_score
+            max_score = max(score/np.count_nonzero(visible), max_score)
+            max_visible = visible
+
+    return  max_score, max_visible
 
 
 def getLastName(file_name):
+    if file_name.startswith('COCO_val2014_'):
+        file_name = file_name.split('COCO_val2014_')[1]
     return float(re.sub("^0+", "", file_name).split('.')[0])
 
 
@@ -96,6 +99,8 @@ if __name__ == '__main__':
                 img_meta = coco.imgs[keys[i]]
                 img_idx = img_meta['id']
                 ann_idx = coco.getAnnIds(imgIds=img_idx)
+                if ann_idx == 25057:
+                    print(coco.loadAnns(ann_idx))
 
                 if i % 100 == 0:
                     print(i)
@@ -150,11 +155,18 @@ if __name__ == '__main__':
                     r = write_coco_json(human, img_meta['width'], img_meta['height'])
                     item['keypoints'] = r
                     item['image_id'] = int(image_id)
-                    item['score'] = compute_oks(r, coco.loadAnns(ann_idx))
-                    print(item['score'])
-                    result.append(item)
-            json.dump(result,fp)
+                    item['score'] , visible = compute_oks(r, coco.loadAnns(ann_idx))
 
+                    if img_idx == 25057:
+                        print(item)
+                    if len(visible) != 0:
+                        for vis in range(17):
+                            item['keypoints'][3* vis + 2] = visible[vis]
+                        print(item)
+                    result.append(item)
+                break
+            json.dump(result,fp)
+            fp.close()
     annType = ['segm', 'bbox', 'keypoints']
     annType = annType[2]
     cocoGt = COCO(args.coco_json_file)
