@@ -1,6 +1,6 @@
-
-import pickle
 import tensorflow as tf
+import time
+
 import cv2
 import numpy as np
 import time
@@ -14,73 +14,43 @@ from estimator import PoseEstimator , TfPoseEstimator
 from networks import get_network
 from pose_dataset import CocoPose
 
+from tf_tensorrt_convert import create_engine 
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 
 config = tf.ConfigProto()
 config.gpu_options.allocator_type = 'BFC'
 config.gpu_options.per_process_gpu_memory_fraction = 0.95
 config.gpu_options.allow_growth = True
-
+#image_input = np.load('img.npy').transpose((2,0,1)).astype(np.float32).copy()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Tensorflow Openpose Inference')
-    parser.add_argument('--imgpath', type=str, default='./images/p2.jpg')
+    parser.add_argument('--imgpath', type=str, default='./images/ski.jpg')
     parser.add_argument('--input-width', type=int, default=368)
     parser.add_argument('--input-height', type=int, default=368)
     parser.add_argument('--stage-level', type=int, default=6)
     parser.add_argument('--model', type=str, default='mobilenet', help='cmu / mobilenet / mobilenet_accurate / mobilenet_fast')
     args = parser.parse_args()
 
-    input_node = tf.placeholder(tf.float32, shape=(1, args.input_height, args.input_width, 3), name='image')
 
     with tf.Session(config=config) as sess:
-        net, _, last_layer = get_network(args.model, input_node, sess)
-
-        logging.debug('read image+')
         image = read_imgfile(args.imgpath, args.input_width, args.input_height)
-        vec = sess.run(net.get_output(name='concat_stage7'), feed_dict={'image:0': [image]})
+        image = (image /255.0 - 0.5 )*2
+        image_input = image.transpose((2,0,1)).astype(np.float32).copy()
+        print('image input dim is ', image_input.shape)
+        output = create_engine(image_input, "vgg16x4.engine", "vgg16x4.uff",  "./models/graph/vgg16x4/graph_vgg16x4_freeze.pb",  57, int(args.input_height/8), int(args.input_width/8), 'concat_stage7.npy', 'Openpose/concat_stage7')
 
-        a = time.time()
-        run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
-        run_metadata = tf.RunMetadata()
-        pafMat, heatMat = sess.run(
-            [
-                net.get_output(name=last_layer.format(stage=args.stage_level, aux=1)),
-                net.get_output(name=last_layer.format(stage=args.stage_level, aux=2))
-            ], feed_dict={'image:0': [image]}, options=run_options, run_metadata=run_metadata
-        )
-        logging.info('inference- elapsed_time={}'.format(time.time() - a))
+        output = output.reshape(57, int(args.input_height/8), int(args.input_width/8)).transpose((1,2,0))
+        heatMat, pafMat = output[:,:,:19], output[:,:,19:]
 
-        tl = timeline.Timeline(run_metadata.step_stats)
-        ctf = tl.generate_chrome_trace_format()
-        with open('timeline.json', 'w') as f:
-            f.write(ctf)
-        heatMat, pafMat = heatMat[0], pafMat[0]
-
-        logging.debug('inference+')
-
-        avg = 0
-        for _ in range(10):
-            a = time.time()
-            sess.run(
-                [
-                    net.get_output(name=last_layer.format(stage=args.stage_level, aux=1)),
-                    net.get_output(name=last_layer.format(stage=args.stage_level, aux=2))
-                ], feed_dict={'image:0': [image]}
-            )
-            logging.info('inference- elapsed_time={}'.format(time.time() - a))
-            avg += time.time() - a
-        logging.info('prediction avg= %f' % (avg / 10))
-
-
-        logging.info('pose+')
         a = time.time()
         humans = PoseEstimator.estimate(heatMat, pafMat)
         logging.info('pose- elapsed_time={}'.format(time.time() - a))
 
         logging.info('image={} heatMap={} pafMat={}'.format(image.shape, heatMat.shape, pafMat.shape))
         process_img = CocoPose.display_image(image, heatMat, pafMat, as_numpy=True)
-
+        np.save('heatmap_tf.npy',heatMat)
         # display
         image = cv2.imread(args.imgpath)
         image_h, image_w = image.shape[:2]
@@ -90,12 +60,11 @@ if __name__ == '__main__':
         newh, neww = 480, int(scale * image_w + 0.5)
 
         image = cv2.resize(image, (neww, newh), interpolation=cv2.INTER_AREA)
-
         convas = np.zeros([480, 640 + neww, 3], dtype=np.uint8)
         convas[:, :640] = process_img
         convas[:, 640:] = image
 
         cv2.imshow('result', convas)
         cv2.waitKey(0)
-        cv2.imwrite(args.model + args.imgpath.split('/')[-1], image)
+
         tf.train.write_graph(sess.graph_def, '.', 'graph-tmp.pb', as_text=True)
