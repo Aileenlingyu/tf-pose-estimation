@@ -40,7 +40,7 @@ if __name__ == '__main__':
         #image = (image /255.0 - 0.5 )*2
         image_input = image.transpose((2,0,1)).astype(np.float32).copy()
         print('image input dim is ', image_input.shape)
-        output = create_engine(image_input, args.engine,  args.graph,  57, int(args.input_height/8), int(args.input_width/8), 'concat_stage7.npy', 'Openpose/concat_stage7')
+        output = create_engine(image_input, args.engine,  args.graph,  57, args.input_height, args.input_width, 'concat_stage7.npy', 'Openpose/concat_stage7')
 
         output = output.reshape(57, int(args.input_height/8), int(args.input_width/8)).transpose((1,2,0))
         heatMat, pafMat = output[:,:,:19], output[:,:,19:]
@@ -64,7 +64,7 @@ if __name__ == '__main__':
         convas = np.zeros([480, 640 + neww, 3], dtype=np.uint8)
         convas[:, :640] = process_img
         convas[:, 640:] = image
-        cv2.imshow('result', convas)
-        cv2.waitKey(0)
+        #cv2.imshow('result', convas)
+        #cv2.waitKey(0)
         cv2.imwrite("tmp.jpg", convas)
         tf.train.write_graph(sess.graph_def, '.', 'graph-tmp.pb', as_text=True)
