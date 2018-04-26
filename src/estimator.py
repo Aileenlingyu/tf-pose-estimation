@@ -6,6 +6,7 @@ from pose_dataset import CocoPose
 import cv2
 import numpy as np
 import tensorflow as tf
+import tensorflow.contrib.tensorrt as trt 
 from scipy.ndimage import maximum_filter, gaussian_filter
 
 import common
@@ -18,7 +19,11 @@ formatter = logging.Formatter('[%(asctime)s] [%(name)s] [%(levelname)s] %(messag
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
-
+def load_graph(graph_path):
+    with tf.gfile.GFile(graph_path, 'rb') as f : 
+        graph_def = tf.GraphDef()
+        graph_def.ParseFromString(f.read())
+    return graph_def 
 class Human:
     """
     body_parts: list of BodyPart
@@ -250,23 +255,29 @@ class PoseEstimator:
 
 
 class TfPoseEstimator:
-    def __init__(self, graph_path, target_size=(320, 240)):
+    def __init__(self, graph_path, use_tensorrt = False, target_size=(320, 240)):
         self.target_size = target_size
-
-        # load graph
-        with tf.gfile.GFile(graph_path, 'rb') as f:
-            graph_def = tf.GraphDef()
-            graph_def.ParseFromString(f.read())
+        graph_def = None
+        if use_tensorrt:
+            graph_def = trt.create_inference_graph(
+                input_graph_def=load_graph(graph_path),
+                outputs=['Openpose/concat_stage7'],
+                max_batch_size=1,
+                max_workspace_size_bytes=1>>16,
+                precision_mode='FP32')
+        else:
+            with tf.gfile.GFile(graph_path, 'rb') as f:
+                graph_def = tf.GraphDef()
+                graph_def.ParseFromString(f.read())
 
         self.graph = tf.get_default_graph()
-        tf.import_graph_def(graph_def, name='TfPoseEstimator')
+        tf.import_graph_def(graph_def, name='')
         self.persistent_sess = tf.Session(graph=self.graph)
+        #for op in self.graph.get_operations():
+        #    print(op.name)
 
-        # for op in self.graph.get_operations():
-        #     print(op.name)
-
-        self.tensor_image = self.graph.get_tensor_by_name('TfPoseEstimator/image:0')
-        self.tensor_output = self.graph.get_tensor_by_name('TfPoseEstimator/Openpose/concat_stage7:0')
+        self.tensor_image = self.graph.get_tensor_by_name('image:0')
+        self.tensor_output = self.graph.get_tensor_by_name('Openpose/concat_stage7:0')
 
         self.heatMat = self.pafMat = None
 
