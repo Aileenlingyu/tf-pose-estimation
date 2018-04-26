@@ -157,7 +157,7 @@ def get_graph_path(model_name):
         'vggx4_368x368': './models/graph/vgg16x4/graph_vgg16x4_opt.pb',
         'mobilenet_zaikun_656x368': './models/graph/mobilenet_thin_432x368/graph_zaikun_opt.pb',
         'mobilenet_v2_656x368': './models/graph/mobilenet_v2/graph_opt.pb',
-        'mobilenet_thin_432x368': './models/graph/mobilenet_thin_432x368/graph_opt.pb',
+        'mobilenet_thin_432x368': './models/graph/mobilenet_thin_432x368/graph_zaikun_opt.pb',
         'mobilenet_thin_656x368': './models/graph/mobilenet_thinzaikun_432x368/graph_opt.pb',
         'mobilenet_fast_432x368': './models/graph/mobilenet_fast/graph_opt.pb',
         'mobilenet_accurate_432x368': './models/graph/mobilenet_accurate/graph_opt.pb',
