@@ -6,7 +6,9 @@ from pose_dataset import CocoPose
 import cv2
 import numpy as np
 import tensorflow as tf
-import tensorflow.contrib.tensorrt as trt 
+if tf.__version__ > '1.7':
+    import tensorflow.contrib.tensorrt as trt 
+
 from scipy.ndimage import maximum_filter, gaussian_filter
 
 import common
@@ -258,7 +260,7 @@ class TfPoseEstimator:
     def __init__(self, graph_path, use_tensorrt = False, target_size=(320, 240)):
         self.target_size = target_size
         graph_def = None
-        if use_tensorrt:
+        if use_tensorrt and tf.__version__ > '1.7':
             graph_def = trt.create_inference_graph(
                 input_graph_def=load_graph(graph_path),
                 outputs=['Openpose/concat_stage7'],
