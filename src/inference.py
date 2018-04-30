@@ -7,7 +7,6 @@ import time
 import logging
 import argparse
 
-from tensorflow.python.client import timeline
 
 from common import  CocoPairsRender, read_imgfile, CocoColors
 from estimator import PoseEstimator , TfPoseEstimator 
@@ -28,14 +27,14 @@ if __name__ == '__main__':
     parser.add_argument('--input-width', type=int, default=368)
     parser.add_argument('--input-height', type=int, default=368)
     parser.add_argument('--stage-level', type=int, default=6)
-    parser.add_argument('--model', type=str, default='mobilenet', help='cmu / mobilenet / mobilenet_accurate / mobilenet_fast')
+    parser.add_argument('--model', type=str, default='mobilenet_thin', help='cmu / mobilenet / mobilenet_accurate / mobilenet_fast')
     args = parser.parse_args()
 
     input_node = tf.placeholder(tf.float32, shape=(1, args.input_height, args.input_width, 3), name='image')
 
     with tf.Session(config=config) as sess:
-        net, _, last_layer = get_network(args.model, input_node, sess)
-
+        net, _, last_layer = get_network(args.model, input_node, sess, trainable=False)
+        tf.train.write_graph(sess.graph_def, '.', 'graph-tmp.pb', as_text=True)
         logging.debug('read image+')
         image = read_imgfile(args.imgpath, args.input_width, args.input_height)
         vec = sess.run(net.get_output(name='concat_stage7'), feed_dict={'image:0': [image]})
@@ -51,10 +50,6 @@ if __name__ == '__main__':
         )
         logging.info('inference- elapsed_time={}'.format(time.time() - a))
 
-        tl = timeline.Timeline(run_metadata.step_stats)
-        ctf = tl.generate_chrome_trace_format()
-        with open('timeline.json', 'w') as f:
-            f.write(ctf)
         heatMat, pafMat = heatMat[0], pafMat[0]
 
         logging.debug('inference+')
@@ -98,4 +93,4 @@ if __name__ == '__main__':
         #cv2.imshow('result', convas)
         #cv2.waitKey(0)
         cv2.imwrite(args.model + args.imgpath.split('/')[-1], image)
-        tf.train.write_graph(sess.graph_def, '.', 'graph-tmp.pb', as_text=True)
+
