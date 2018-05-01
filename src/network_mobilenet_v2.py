@@ -26,11 +26,11 @@ class MobilenetNetworkV2(network_base.BaseNetwork):
                 .inverted_bottleneck( 6, 96, 0, name = "InvertedResidual_96_0")\
                 .inverted_bottleneck( 6, 96, 0, name = "InvertedResidual_96_1")\
                 .inverted_bottleneck( 6, 96, 0, name = "InvertedResidual_96_2") \
-                # .inverted_bottleneck( 6, 160,0, name = "InvertedResidual_160_0") \
-                # .inverted_bottleneck( 6, 160,0, name = "InvertedResidual_160_1")\
+                .inverted_bottleneck( 6, 160,0, name = "InvertedResidual_160_0") \
+                .inverted_bottleneck( 6, 160,0, name = "InvertedResidual_160_1")\
                 # .inverted_bottleneck( 6, 160,0, name = "InvertedResidual_160_2") \
 
-        feature_lv = 'InvertedResidual_96_2'
+        feature_lv = 'InvertedResidual_160_1'
         with tf.variable_scope('Openpose'):
             prefix = 'MConv_Stage1'
             (self.feed(feature_lv)
