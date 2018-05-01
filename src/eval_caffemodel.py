@@ -88,15 +88,10 @@ if __name__ == '__main__':
         '''
         caffe.set_mode_gpu()
         net = caffe.Net(args.proto, args.caffemodel, caffe.TEST)
-       
-        net.blobs['image'].reshape(*(1, 3, image.shape[0], image.shape[1]))
-       
+        net.blobs['image'].reshape(*(1, 3, args.input_height, args.input_width))
         for i, img in enumerate(val_images):
-            if i % 100 == 0:
+            if i % 1000 == 0:
                 print('running through {} examples'.format(i))
-
-            if i == 1000:
-                break 
             image_id = int(getLastName(img))
             img_meta = coco.imgs[keys[i]]
             img_idx = img_meta['id']
@@ -150,7 +145,6 @@ if __name__ == '__main__':
         fp.close()
         annType = ['segm', 'bbox', 'keypoints']
         annType = annType[2]
-        import pdb; pdb.set_trace()
         cocoGt = COCO(args.coco_json_file)
         imgIds = sorted(cocoGt.getImgIds())
         cocoDt = cocoGt.loadRes(write_json)
@@ -163,7 +157,7 @@ if __name__ == '__main__':
         cocoEval.summarize()
 
     pred = json.load(open(write_json, 'r'))
-    print('AP50')
+    print('model {} with with {} and height {} AP50'.format(args.model, args.input_width, args.input_height))
     scores = [ x['score'] for x in pred]
     ap50 = compute_ap(scores, 0.5)
     print('ap50 is %f' % ap50)

@@ -41,7 +41,6 @@ def write_coco_json(human, image_w, image_h):
 def compute_oks(keypoints, anns):
     sigmas = np.array([.26, .25, .25, .35, .35, .79, .79, .72, .72, .62, .62, 1.07, 1.07, .87, .87, .89, .89]) / 10.0
     vars = (sigmas * 2) ** 2
-
     max_score = 0
     max_visible = []
     for ann in anns:
@@ -60,12 +59,9 @@ def compute_oks(keypoints, anns):
 
             for i in range(17):
                 score = score if visible[i]== 0 else score +  np.exp(-dist[i]  / 2.0 / sp/ vars[i])
-
             max_score = max(score/np.count_nonzero(visible), max_score)
             max_visible = visible
-
     return  max_score, max_visible
-
 
 def getLastName(file_name):
     if file_name.startswith('COCO_val2014_'):
@@ -87,7 +83,7 @@ if __name__ == '__main__':
     parser.add_argument('--coco_json_file', type = str, default = '/home/zaikun/hdd/data/keypoint/annotations/person_keypoints_val2017.json')
     parser.add_argument('--display', type=bool, default=False)
     args = parser.parse_args()
-    write_json = '%s_%d_%d.json' %(args.model, args.input_width, args.input_height)
+    write_json = 'json/%s_%d_%d.json' %(args.model, args.input_width, args.input_height)
     if not os.path.exists(write_json):
         input_node = tf.placeholder(tf.float32, shape=(1, args.input_height, args.input_width, 3), name='image')
         fp = open(write_json, 'w')
