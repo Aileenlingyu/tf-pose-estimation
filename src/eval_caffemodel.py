@@ -74,7 +74,7 @@ if __name__ == '__main__':
     parser.add_argument('--proto', type=str, default='./models/pretrained/cmupose/pose_deploy_linevec.prototxt')
 
     args = parser.parse_args()
-    write_json = '%s_%d_%d.json' %(args.model, args.input_width, args.input_height)
+    write_json = 'json/%s_%d_%d.json' %(args.model, args.input_width, args.input_height)
     if not os.path.exists(write_json):
         fp = open(write_json, 'w')
         result = []
@@ -88,15 +88,15 @@ if __name__ == '__main__':
         '''
         caffe.set_mode_gpu()
         net = caffe.Net(args.proto, args.caffemodel, caffe.TEST)
-        transformer = caffe.io.Transformer({'image': net.blobs['image'].data.shape})
-        transformer.set_transpose('image', (2,0,1))  # move image channels to outermost dimension
-        transformer.set_raw_scale('image', 255)      # rescale from [0, 1] to [0, 255]
-        transformer.set_channel_swap('image', (2,1,0))  # swap channels from RGB to BGR
-        net.blobs['image'].reshape(1,3, args.input_height, args.input_width)  # image size is 227x227
-
+       
+        net.blobs['image'].reshape(*(1, 3, image.shape[0], image.shape[1]))
+       
         for i, img in enumerate(val_images):
             if i % 100 == 0:
                 print('running through {} examples'.format(i))
+
+            if i == 1000:
+                break 
             image_id = int(getLastName(img))
             img_meta = coco.imgs[keys[i]]
             img_idx = img_meta['id']
@@ -108,20 +108,16 @@ if __name__ == '__main__':
                 'keypoints':[],
                 'score': 0.0
             }
-            img_name = args.image_dir + img
-            image = caffe.io.load_image(img_name)
-            transformed_image = transformer.preprocess('image', image)
-            net.blobs['image'].data[...] = transformed_image
 
-            '''
-                caffe inference here 
-            '''
+            img_name = args.image_dir + img
+            image = cv2.imread(img_name)
+            image = cv2.resize(image, (args.input_width, args.input_height))
+
+            net.blobs['image'].data[...] = np.transpose(np.float32(image[:,:,:,np.newaxis]), (3,2,0,1))/256 - 0.5;
+
             out = net.forward()
             concat_stage7 = out['net_output'][0]
             heatMat, pafMat = concat_stage7[:19, :, :], concat_stage7[19:, :, :]
-            # reorder the chw to hwc 
-            heatMat = heatMat.transpose(1,2,0)
-            pafMat  = pafMat.transpose(1,2,0)
 
             humans = PoseEstimator.estimate(heatMat, pafMat)
             if len(humans) == 0:
@@ -149,11 +145,12 @@ if __name__ == '__main__':
                 #     for vis in range(17):
                 #         item['keypoints'][3* vis + 2] = 0
 
-
-            json.dump(result,fp)
-            fp.close()
+        print(result)
+        json.dump(result,fp)
+        fp.close()
         annType = ['segm', 'bbox', 'keypoints']
         annType = annType[2]
+        import pdb; pdb.set_trace()
         cocoGt = COCO(args.coco_json_file)
         imgIds = sorted(cocoGt.getImgIds())
         cocoDt = cocoGt.loadRes(write_json)
