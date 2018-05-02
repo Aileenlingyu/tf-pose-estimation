@@ -49,7 +49,7 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
     elif type == 'cmu':
         net = CmuNetwork({'image': placeholder_input}, trainable=trainable)
         pretrain_path = 'numpy/openpose_coco.npy'
-        se = 'Mconv7_stage6_L{aux}'
+        last_layer = 'Mconv7_stage6_L{aux}'
 
     elif type == 'vgg':
         net = CmuNetwork({'image': placeholder_input}, trainable=trainable)
@@ -94,11 +94,9 @@ def get_graph_path(model_name):
     return {
         'cmu_640x480': './models/graph/cmu_640x480/graph_opt.pb',
         'vgg_656x368'        : './models/graph/vgg/graph_zaikun_opt.pb',
-        'vggx4_368x368': './models/graph/vgg16x4/graph_vgg16x4_opt.pb',
-        'mobilenet_v2_656x368': './models/graph/mobilenet_v2/graph_opt.pb',
-        'mobilenet_thin_432x368': './models/graph/mobilenet_thin_432x368/graph_zaikun_opt.pb',
+        'mobilenet_thin_440x256': './models/graph/mobilenet_thinzaikun_440x256/graph_opt.pb',
+        'mobilenet_thin_656x368': './models/graph/mobilenet_thinzaikun_656x368/graph_opt.pb',
         'mobilenet_original_432x368': './models/graph/mobilenet_thin_432x368/graph_opt.pb',
-        'mobilenet_fast_432x368': './models/graph/mobilenet_fast/graph_opt.pb',
         'mobilenet_thin_0.5_432x368': './models/graph/mobilenet_thin_0.5_432x368/graph_opt.pb',
 
     }[model_name]
