@@ -41,7 +41,6 @@ def compute_oks(keypoints, anns):
         else:
             gt_point = np.array([(x, y) for x , y in zip(gt[0::3], gt[1::3])])
             pred = np.array([(x, y) for x , y in zip(keypoints[0::3], keypoints[1::3])])
-            # import pdb; pdb.set_trace()
             dist = (gt_point - pred) ** 2
             dist = np.sum(dist, axis=1)
             sp = (ann['area'] + 1)
@@ -79,13 +78,9 @@ if __name__ == '__main__':
         fp = open(write_json, 'w')
         result = []
         val_images = os.listdir(args.image_dir)
-        #val_images = [ '000000025057.jpg' ]
         coco = COCO(args.coco_json_file)
         keys = list(coco.imgs.keys())
 
-        '''
-            Need to loop over all the images
-        '''
         caffe.set_mode_gpu()
         net = caffe.Net(args.proto, args.caffemodel, caffe.TEST)
         net.blobs['image'].reshape(*(1, 3, args.input_height, args.input_width))
@@ -116,17 +111,8 @@ if __name__ == '__main__':
 
             humans = PoseEstimator.estimate(heatMat, pafMat)
             if len(humans) == 0:
-                # item['keypoints'] = [0] * 51
-                # item['image_id']  = int(image_id)
-                #result.append(item)
                 continue
 
-            # diff = len(ann_idx) - len(humans)
-            # if diff > 0:
-            #     for kk in range(diff):
-            #         item['keypoints'] = [0] * 51
-            #         item['image_id']  = int(image_id)
-            #         result.append(item)
             for human in humans :
                 r = write_coco_json(human, img_meta['width'], img_meta['height'])
                 item['keypoints'] = r
@@ -136,11 +122,7 @@ if __name__ == '__main__':
                     for vis in range(17):
                         item['keypoints'][3* vis + 2] = visible[vis]
                     result.append(item)
-                # else:
-                #     for vis in range(17):
-                #         item['keypoints'][3* vis + 2] = 0
 
-        print(result)
         json.dump(result,fp)
         fp.close()
         annType = ['segm', 'bbox', 'keypoints']
@@ -166,3 +148,4 @@ if __name__ == '__main__':
         ap = ap + compute_ap(scores, i)
     ap = ap / len(np.arange(0.5, 1 , 0.05).tolist())
     print('ap is %f' % ap)
+

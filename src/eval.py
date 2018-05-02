@@ -78,7 +78,7 @@ if __name__ == '__main__':
     parser.add_argument('--input-width', type=int, default=368)
     parser.add_argument('--input-height', type=int, default=368)
     parser.add_argument('--stage-level', type=int, default=6)
-    parser.add_argument('--model', type=str, default='mobilenet', help='cmu / mobilenet / mobilenet_accurate / mobilenet_fast')
+    parser.add_argument('--model', type=str, default='mobilenet_thin', help='mobilenet_original / mobilenet_thin')
     parser.add_argument('--image_dir', type=str, default='/home/zaikun/hdd/data/keypoint/val2017/')
     parser.add_argument('--coco_json_file', type = str, default = '/home/zaikun/hdd/data/keypoint/annotations/person_keypoints_val2017.json')
     parser.add_argument('--display', type=bool, default=False)

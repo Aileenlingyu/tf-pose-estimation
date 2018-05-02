@@ -2,6 +2,7 @@ import os
 import tensorflow as tf
 from network_mobilenet import MobilenetNetwork
 from network_mobilenet_thin import MobilenetNetworkThin
+from network_mobilenet_original import MobilenetNetworkOriginal
 
 from network_vgg16x4 import VGG16x4Network
 from network_cmu import CmuNetwork
@@ -35,6 +36,10 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
         pretrain_path = 'pretrained/mobilenet_v1_0.75_224_2017_06_14/mobilenet_v1_0.75_224.ckpt'
         last_layer = 'MConv_Stage6_L{aux}_5'
     
+    elif type == 'mobilenet_original':
+        net = MobilenetNetworkOriginal({'image': placeholder_input}, conv_width=0.75, conv_width2=0.50, trainable=trainable)
+        pretrain_path = 'pretrained/mobilenet_v1_0.75_224_2017_06_14/mobilenet_v1_0.75_224.ckpt'
+        last_layer = 'MConv_Stage6_L{aux}_5'
 
     elif type == 'mobilenet_v2':
         net = MobilenetNetworkV2Hyperfeature({'image': placeholder_input}, conv_width=1, conv_width2=0.50, trainable=trainable)
@@ -75,7 +80,7 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
                 'mobilenet_v2': 'trained/mobilenet_v2/model-75001',
                 'mobilenet_accurate': 'trained/mobilenet_accurate/model-69000',
                 'mobilenet_fast': 'trained/mobilenet_fast/model-37001',
-                #'mobilenet_thin': 'trained/mobilenet_thin_benchmark/model-388003',
+                'mobilenet_original': 'trained/mobilenet_thin_benchmark/model-388003',
                 'vgg16x4' : 'trained/vgg16x4_0.75/model-35000',
                 'vgg': 'trained/vgg/model-31000'
             }
@@ -92,6 +97,7 @@ def get_graph_path(model_name):
         'vggx4_368x368': './models/graph/vgg16x4/graph_vgg16x4_opt.pb',
         'mobilenet_v2_656x368': './models/graph/mobilenet_v2/graph_opt.pb',
         'mobilenet_thin_432x368': './models/graph/mobilenet_thin_432x368/graph_zaikun_opt.pb',
+        'mobilenet_original_432x368': './models/graph/mobilenet_thin_432x368/graph_opt.pb',
         'mobilenet_fast_432x368': './models/graph/mobilenet_fast/graph_opt.pb',
         'mobilenet_thin_0.5_432x368': './models/graph/mobilenet_thin_0.5_432x368/graph_opt.pb',
 
