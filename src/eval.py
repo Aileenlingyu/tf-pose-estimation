@@ -8,7 +8,7 @@ import logging
 import argparse
 import json, re
 from tensorflow.python.client import timeline
-
+from tqdm import tqdm
 from common import  CocoPairsRender, read_imgfile, CocoColors
 from estimator import PoseEstimator , TfPoseEstimator
 from networks import get_network
@@ -23,20 +23,21 @@ config.gpu_options.allocator_type = 'BFC'
 config.gpu_options.per_process_gpu_memory_fraction = 0.95
 config.gpu_options.allow_growth = True
 
-transform_list = [0, 15,14,17,16,5, 2, 6, 3,7,4, 11, 8, 12, 9,13,10]
+def round_int(val):
+    return int(round(val))
+    
 def write_coco_json(human, image_w, image_h):
     keypoints = []
+    transform_list = [0, 15, 14, 17, 16, 5, 2, 6, 3, 7, 4, 11, 8, 12, 9, 13, 10]
+    #transform_list = list(range(18))
     for i in transform_list:
         if i not in human.body_parts.keys():
-            keypoints.extend([0,0,0])
+            # keypoints.extend([image_w/2, image_h/2, 0])
+            keypoints.extend([0, 0, 0])
             continue
         body_part = human.body_parts[i]
-        center = (int(body_part.x * image_w + 0.5), int(body_part.y * image_h + 0.5))
-        keypoints.append(center[0])
-        keypoints.append(center[1])
-        keypoints.append(2)
+        keypoints.extend([round_int(body_part.x * image_w), round_int(body_part.y * image_h), 2])
     return keypoints
-
 
 def compute_oks(keypoints, anns):
     sigmas = np.array([.26, .25, .25, .35, .35, .79, .79, .72, .72, .62, .62, 1.07, 1.07, .87, .87, .89, .89]) / 10.0
@@ -55,18 +56,18 @@ def compute_oks(keypoints, anns):
             # import pdb; pdb.set_trace()
             dist = (gt_point - pred) ** 2
             dist = np.sum(dist, axis=1)
-            sp = (ann['area'] + 1)
+            sp = (ann['area'] + np.spacing(1))
 
-            for i in range(17):
-                score = score if visible[i]== 0 else score +  np.exp(-dist[i]  / 2.0 / sp/ vars[i])
-            max_score = max(score/np.count_nonzero(visible), max_score)
+        dist[visible == 0] = 0.0
+        # dist[visible_pred == 0] = 0.0
+        score = np.exp(-dist / vars / 2.0 / sp)
+
+        score = np.mean(score)
+        if max_score < score:
+            max_score = score
             max_visible = visible
-    return  max_score, max_visible
+    return max_score, max_visible
 
-def getLastName(file_name):
-    if file_name.startswith('COCO_val2014_'):
-        file_name = file_name.split('COCO_val2014_')[1]
-    return float(re.sub("^0+", "", file_name).split('.')[0])
 
 def compute_ap(score, threshold =0.5):
     b =  [ 1 if x > threshold else 0 for x in score]
@@ -84,25 +85,29 @@ if __name__ == '__main__':
     parser.add_argument('--display', type=bool, default=False)
     args = parser.parse_args()
     write_json = 'json/%s_%d_%d.json' %(args.model, args.input_width, args.input_height)
+
+    annType = ['segm', 'bbox', 'keypoints']
+    annType = annType[2]
+    cocoGt = COCO(args.coco_json_file)
+    keys = list(cocoGt.imgs.keys())
+    catIds = cocoGt.getCatIds(catNms = ['person'])
+    imgIds = cocoGt.getImgIds(catIds = catIds)
+    keys = list(cocoGt.imgs.keys())
+
     if not os.path.exists(write_json):
         input_node = tf.placeholder(tf.float32, shape=(1, args.input_height, args.input_width, 3), name='image')
         fp = open(write_json, 'w')
         result = []
-        val_images = os.listdir(args.image_dir)
-        #val_images = [ '000000025057.jpg' ]
+        
+        #import pdb; pdb.set_trace()
         with tf.Session(config=config) as sess:
             net, _, last_layer = get_network(args.model, input_node, sess)
-            coco = COCO(args.coco_json_file)
-            keys = list(coco.imgs.keys())
-
-            '''
-                Need to loop over all the images
-            '''
-            for i, img in enumerate(val_images):
-                image_id = int(getLastName(img))
-                img_meta = coco.imgs[keys[i]]
+            for i, image_id in enumerate(tqdm(keys)):
+                #image_id = int(getLastName(img))
+                img_meta = cocoGt.imgs[image_id]
                 img_idx = img_meta['id']
-                ann_idx = coco.getAnnIds(imgIds=image_id)
+                ann_idx = cocoGt.getAnnIds(imgIds=image_id)
+                anns = cocoGt.loadAnns(ann_idx)
 
                 item = {
                     'image_id':1,
@@ -110,11 +115,10 @@ if __name__ == '__main__':
                     'keypoints':[],
                     'score': 0.0
                 }
-                img_name = args.image_dir + img
+                img_name = args.image_dir +  '%012d.jpg' % image_id
                 image = read_imgfile(img_name, args.input_width, args.input_height)
                 vec = sess.run(net.get_output(name='concat_stage7'), feed_dict={'image:0': [image]})
 
-                a = time.time()
                 run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
                 run_metadata = tf.RunMetadata()
                 pafMat, heatMat = sess.run(
@@ -123,59 +127,31 @@ if __name__ == '__main__':
                         net.get_output(name=last_layer.format(stage=args.stage_level, aux=2))
                     ], feed_dict={'image:0': [image]}, options=run_options, run_metadata=run_metadata
                 )
-
                 heatMat, pafMat = heatMat[0], pafMat[0]
-                '''
-                    Q:
-                        Given n persons in one image, how do we output the result to a json ?
-                        
-                    A:
-                        In the coco validation images, images with multiple persons are written to
-                        mutiple json items and in evaluation, the cocoapi will do the search for the 
-                        right match for us.
-                '''
-                a = time.time()
                 humans = PoseEstimator.estimate(heatMat, pafMat)
                 if len(humans) == 0:
-                    # item['keypoints'] = [0] * 51
-                    # item['image_id']  = int(image_id)
-                    #result.append(item)
                     continue
-
-                # diff = len(ann_idx) - len(humans)
-                # if diff > 0:
-                #     for kk in range(diff):
-                #         item['keypoints'] = [0] * 51
-                #         item['image_id']  = int(image_id)
-                #         result.append(item)
+   
                 for human in humans :
                     r = write_coco_json(human, img_meta['width'], img_meta['height'])
                     item['keypoints'] = r
-                    item['image_id'] = int(image_id)
-                    item['score'] , visible = compute_oks(r, coco.loadAnns(ann_idx))
+                    item['image_id'] = image_id
+                    item['score'] , visible = compute_oks(r, cocoGt.loadAnns(ann_idx))
                     if len(visible) != 0:
                         for vis in range(17):
                             item['keypoints'][3* vis + 2] = visible[vis]
                         result.append(item)
-                    # else:
-                    #     for vis in range(17):
-                    #         item['keypoints'][3* vis + 2] = 0
 
+        json.dump(result,fp)
+        fp.close()
 
-            json.dump(result,fp)
-            fp.close()
-        annType = ['segm', 'bbox', 'keypoints']
-        annType = annType[2]
-        cocoGt = COCO(args.coco_json_file)
-        imgIds = sorted(cocoGt.getImgIds())
-        cocoDt = cocoGt.loadRes(write_json)
-        cocoEval = COCOeval(cocoGt, cocoDt, annType)
-        cocoEval.params.maxDets=[20]
-        cocoEval.params.imgIds = imgIds
-        cocoEval.params.catIds = [1]
-        cocoEval.evaluate()
-        cocoEval.accumulate()
-        cocoEval.summarize()
+    cocoDt = cocoGt.loadRes(write_json)
+    cocoEval = COCOeval(cocoGt, cocoDt, annType)
+    cocoEval.params.imgIds = keys
+    cocoEval.params.catIds = [1]
+    cocoEval.evaluate()
+    cocoEval.accumulate()
+    cocoEval.summarize()
 
     pred = json.load(open(write_json, 'r'))
     print('AP50')
