@@ -10,10 +10,7 @@
  - evalution script on validation dataset (support evaluation of both tf and caffe model)
  - tensorrt support 
 
-
-
-
-##Inference From Caffemodel (cmu openpose)
+## Inference From Caffemodel (cmu openpose)
 
 python3 src/inference_cmupose.py  --input-width=656
 
