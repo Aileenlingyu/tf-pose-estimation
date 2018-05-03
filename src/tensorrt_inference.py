@@ -14,7 +14,7 @@ from estimator import PoseEstimator , TfPoseEstimator
 from networks import get_network
 from pose_dataset import CocoPose
 
-from tf_tensorrt_convert import create_engine 
+from tf_tensorrt_convert import * 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 config = tf.ConfigProto()
@@ -29,21 +29,28 @@ if __name__ == '__main__':
     parser.add_argument('--input-width', type=int, default=432)
     parser.add_argument('--input-height', type=int, default=368)
     parser.add_argument('--stage-level', type=int, default=6)
-    parser.add_argument('--graph', type=str, default='./models/graph/mobilenet_thin_432x368/graph_freeze.pb')
+    parser.add_argument('--graph', type=str, default='./models/graph/mobilenet_thin_432x368/graph_opt.pb')
     parser.add_argument('--model', type=str, default='mobilenet_thin', help='cmu / mobilenet / mobilenet_accurate / mobilenet_fast')
     parser.add_argument('--engine', type=str, default='mobilenet_thin.engine')
+    parser.add_argument('--caffe', type=bool, default=False)
+    parser.add_argument('--caffemodel', type=str, default='./models/pretrained/cmupose/pose_iter_440000.caffemodel')
+    parser.add_argument('--proto', type=str, default='./models/pretrained/cmupose/pose_deploy_linevec.prototxt')
     args = parser.parse_args()
-
 
     with tf.Session(config=config) as sess:
         image = read_imgfile(args.imgpath, args.input_width, args.input_height)
         #image = (image /255.0 - 0.5 )*2
         image_input = image.transpose((2,0,1)).astype(np.float32).copy()
         print('image input dim is ', image_input.shape)
-        output = create_engine(image_input, args.engine,  args.graph,  57, args.input_height, args.input_width, 'concat_stage7.npy', 'Openpose/concat_stage7')
+        if not args.caffe : 
+            output = create_engine(image_input, args.engine,  args.graph,  57, args.input_height, args.input_width, 'image', 'Openpose/concat_stage7')
+            output = output.reshape(57, int(args.input_height/8), int(args.input_width/8)).transpose((1,2,0))
+            heatMat, pafMat = output[:,:,:19], output[:,:,19:]
 
-        output = output.reshape(57, int(args.input_height/8), int(args.input_width/8)).transpose((1,2,0))
-        heatMat, pafMat = output[:,:,:19], output[:,:,19:]
+        else:
+            output = create_engine_from_caffe(image_input / 256 - 0.5, args.engine, args.caffemodel, args.proto, 57, args.input_height, args.input_width, 'image', 'net_output')
+            output = output.reshape(57, int(args.input_height/8), int(args.input_width/8)).transpose((1,2,0))
+            heatMat, pafMat = output[:,:,:19], output[:,:,19:]
 
         a = time.time()
         humans = PoseEstimator.estimate(heatMat, pafMat)

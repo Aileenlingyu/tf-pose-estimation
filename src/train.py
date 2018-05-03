@@ -188,14 +188,14 @@ if __name__ == '__main__':
         if ',' not in args.lr:
             starter_learning_rate = float(args.lr)
             learning_rate = tf.train.exponential_decay(starter_learning_rate, global_step,
-                                                       decay_steps=args.decay_steps * 96/ args.batchsize, decay_rate=0.6, staircase=True)
+                                                       decay_steps=args.decay_steps * 96/ args.batchsize, decay_rate=1.0, staircase=True)
         else:
             lrs = [float(x) for x in args.lr.split(',')]
             boundaries = [step_per_epoch * 5 * i for i, _ in range(len(lrs)) if i > 0]
             learning_rate = tf.train.piecewise_constant(global_step, boundaries, lrs)
 
-    optimizer = tf.train.RMSPropOptimizer(learning_rate, decay=0.0005, momentum=0.9, epsilon=1e-10)
-    #optimizer = tf.train.AdamOptimizer(learning_rate, epsilon=1e-8)
+    #optimizer = tf.train.RMSPropOptimizer(learning_rate, decay=0.0005, momentum=0.9, epsilon=1e-10)
+    optimizer = tf.train.AdamOptimizer(learning_rate, epsilon=1e-8)
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
     with tf.control_dependencies(update_ops):
         train_op = optimizer.minimize(total_loss, global_step, colocate_gradients_with_ops=True)
