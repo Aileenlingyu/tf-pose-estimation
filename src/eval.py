@@ -99,7 +99,6 @@ if __name__ == '__main__':
         fp = open(write_json, 'w')
         result = []
         
-        #import pdb; pdb.set_trace()
         with tf.Session(config=config) as sess:
             net, _, last_layer = get_network(args.model, input_node, sess)
             for i, image_id in enumerate(tqdm(keys)):
@@ -117,8 +116,6 @@ if __name__ == '__main__':
                 }
                 img_name = args.image_dir +  '%012d.jpg' % image_id
                 image = read_imgfile(img_name, args.input_width, args.input_height)
-                vec = sess.run(net.get_output(name='concat_stage7'), feed_dict={'image:0': [image]})
-
                 run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
                 run_metadata = tf.RunMetadata()
                 pafMat, heatMat = sess.run(
@@ -129,14 +126,13 @@ if __name__ == '__main__':
                 )
                 heatMat, pafMat = heatMat[0], pafMat[0]
                 humans = PoseEstimator.estimate(heatMat, pafMat)
-                if len(humans) == 0:
-                    continue
    
                 for human in humans :
-                    r = write_coco_json(human, img_meta['width'], img_meta['height'])
-                    item['keypoints'] = r
+                    #import pdb; pdb.set_trace();
+                    res = write_coco_json(human, img_meta['width'], img_meta['height'])
+                    item['keypoints'] = res
                     item['image_id'] = image_id
-                    item['score'] , visible = compute_oks(r, cocoGt.loadAnns(ann_idx))
+                    item['score'] , visible = compute_oks(res, cocoGt.loadAnns(ann_idx))
                     if len(visible) != 0:
                         for vis in range(17):
                             item['keypoints'][3* vis + 2] = visible[vis]

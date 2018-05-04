@@ -51,5 +51,5 @@ if __name__ == '__main__':
     convas[:, :640] = process_img
     convas[:, 640:] = image
 
-    cv2.imwrite("cmupose.jpg", image)
+    cv2.imwrite("cmupose.jpg", convas)
 

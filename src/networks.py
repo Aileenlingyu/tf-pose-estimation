@@ -77,12 +77,8 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
             ckpts = {
                 'mobilenet': 'trained/mobilenet_%s/model-53008' % s,
                 'mobilenet_thin' : 'trained/mobilenet_thin_432x368/model-160001',
-                'mobilenet_v2': 'trained/mobilenet_v2/model-75001',
-                'mobilenet_accurate': 'trained/mobilenet_accurate/model-69000',
-                'mobilenet_fast': 'trained/mobilenet_fast/model-37001',
                 'mobilenet_original': 'trained/mobilenet_thin_benchmark/model-388003',
                 'vgg16x4' : 'trained/vgg16x4_0.75/model-35000',
-                'vgg': 'trained/vgg/model-31000'
             }
             loader = tf.train.Saver()
             loader.restore(sess_for_load, os.path.join(_get_base_path(), ckpts[type]))
@@ -95,9 +91,7 @@ def get_graph_path(model_name):
         'cmu_640x480': './models/graph/cmu_640x480/graph_opt.pb',
         'vgg_656x368'        : './models/graph/vgg/graph_zaikun_opt.pb',
         'mobilenet_thin_440x256': './models/graph/mobilenet_thinzaikun_440x256/graph_opt.pb',
-        'mobilenet_thin_656x368': './models/graph/mobilenet_thinzaikun_656x368/graph_opt.pb',
         'mobilenet_original_432x368': './models/graph/mobilenet_thin_432x368/graph_opt.pb',
-        'mobilenet_thin_0.5_432x368': './models/graph/mobilenet_thin_0.5_432x368/graph_opt.pb',
 
     }[model_name]
 
