@@ -11,7 +11,7 @@ import numpy as np
 G_LOGGER = trt.infer.ConsoleLogger(trt.infer.LogSeverity.ERROR)
 
 
-def create_engine(img, name, model_path, c_o, height, width, input_layer='image',
+def create_engine(name, model_path, height, width, input_layer='image',
                   output_layer='Openpose/concat_stage7'):
     if not os.path.exists(name):
         # Load your newly created Tensorflow frozen model and convert it to UFF
@@ -37,7 +37,9 @@ def create_engine(img, name, model_path, c_o, height, width, input_layer='image'
     else:
         engine = trt.utils.load_engine(G_LOGGER, name)
 
-    print("engine created ....")
+    return engine
+
+def tensorrt_inference(img, c_o, height, width, engine):
     context = engine.create_execution_context()
     output = np.empty(c_o * int(height/8) * int(width/8), dtype=np.float32)
     # alocate device memory
@@ -50,10 +52,9 @@ def create_engine(img, name, model_path, c_o, height, width, input_layer='image'
     # execute model
     # import pdb; pdb.set_trace();
     start = time.time()
-    for i in range(10):
-        context.enqueue(1, bindings, stream.handle, None)
-    end = time.time()
-    print('prediction on single image run 10 times takes {}s'.format(end - start))
+    context.enqueue(1, bindings, stream.handle, None)
+    #end = time.time()
+    #print('prediction on single image run 10 times takes {}s'.format(end - start))
     cuda.memcpy_dtoh_async(output, d_output, stream)
     # syncronize threads
     stream.synchronize()
@@ -65,7 +66,7 @@ def create_engine(img, name, model_path, c_o, height, width, input_layer='image'
     return output
 
 
-def create_engine_from_caffe(img, name, model, proto, c_o, height, width, input_layer, output_layer):
+def create_engine_from_caffe(name, model, proto, input_layer, output_layer):
     G_LOGGER = trt.infer.ConsoleLogger(trt.infer.LogSeverity.ERROR)
     if not os.path.exists(name):
         engine = trt.utils.caffe_to_trt_engine(G_LOGGER,
@@ -81,23 +82,4 @@ def create_engine_from_caffe(img, name, model, proto, c_o, height, width, input_
         engine = trt.utils.load_engine(G_LOGGER, name)
 
     print("engine created ....")
-    context = engine.create_execution_context()
-    output = np.empty(c_o * int(height/8) * int(width/8), dtype=np.float32)
-    # alocate device memory
-    d_input = cuda.mem_alloc(1 * img.size * img.dtype.itemsize)
-    d_output = cuda.mem_alloc(1 * output.size * output.dtype.itemsize)
-    bindings = [int(d_input), int(d_output)]
-    stream = cuda.Stream()
-    # transfer input data to device
-    cuda.memcpy_htod_async(d_input, img, stream)
-    # execute model
-    # import pdb; pdb.set_trace();
-    start = time.time()
-    for i in range(10):
-        context.enqueue(1, bindings, stream.handle, None)
-    end = time.time()
-    print('prediction on single image run 10 times takes {}s'.format(end - start))
-    cuda.memcpy_dtoh_async(output, d_output, stream)
-    # syncronize threads
-    stream.synchronize()
-    return output 
+    return engine 

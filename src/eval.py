@@ -12,6 +12,7 @@ from tqdm import tqdm
 from common import  CocoPairsRender, read_imgfile, CocoColors
 from estimator import PoseEstimator , TfPoseEstimator
 from networks import get_network
+from tf_tensorrt_convert import * 
 from pose_dataset import CocoPose
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
@@ -79,7 +80,10 @@ if __name__ == '__main__':
     parser.add_argument('--input-width', type=int, default=368)
     parser.add_argument('--input-height', type=int, default=368)
     parser.add_argument('--stage-level', type=int, default=6)
+    parser.add_argument('--use_tensorrt', type=bool, default=False)
     parser.add_argument('--model', type=str, default='mobilenet_thin', help='mobilenet_original / mobilenet_thin')
+    parser.add_argument('--engine',  type=str, default="mobilepose_thin_656x368.engine")
+    parser.add_argument('--graph', type=str, default="graph_opt.pb")
     parser.add_argument('--image_dir', type=str, default='/home/zaikun/hdd/data/keypoint/val2017/')
     parser.add_argument('--coco_json_file', type = str, default = '/home/zaikun/hdd/data/keypoint/annotations/person_keypoints_val2017.json')
     parser.add_argument('--display', type=bool, default=False)
@@ -100,7 +104,12 @@ if __name__ == '__main__':
         result = []
         
         with tf.Session(config=config) as sess:
-            net, _, last_layer = get_network(args.model, input_node, sess)
+            if not args.use_tensorrt:
+                net, _, last_layer = get_network(args.model, input_node, sess)
+                engine = None
+            else:
+                net, last_layer = None, None
+                engine = create_engine(args.engine,  args.graph, args.input_height, args.input_width,  'image', 'Openpose/concat_stage7')
             for i, image_id in enumerate(tqdm(keys)):
                 #image_id = int(getLastName(img))
                 img_meta = cocoGt.imgs[image_id]
@@ -116,15 +125,21 @@ if __name__ == '__main__':
                 }
                 img_name = args.image_dir +  '%012d.jpg' % image_id
                 image = read_imgfile(img_name, args.input_width, args.input_height)
-                run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
-                run_metadata = tf.RunMetadata()
-                pafMat, heatMat = sess.run(
-                    [
-                        net.get_output(name=last_layer.format(stage=args.stage_level, aux=1)),
-                        net.get_output(name=last_layer.format(stage=args.stage_level, aux=2))
-                    ], feed_dict={'image:0': [image]}, options=run_options, run_metadata=run_metadata
-                )
-                heatMat, pafMat = heatMat[0], pafMat[0]
+                if not args.use_tensorrt:
+                    run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+                    run_metadata = tf.RunMetadata()
+                    pafMat, heatMat = sess.run(
+                        [
+                            net.get_output(name=last_layer.format(stage=args.stage_level, aux=1)),
+                            net.get_output(name=last_layer.format(stage=args.stage_level, aux=2))
+                        ], feed_dict={'image:0': [image]}, options=run_options, run_metadata=run_metadata
+                    )
+                    heatMat, pafMat = heatMat[0], pafMat[0]
+                else:
+                    output = tensorrt_inference(image, 57, args.input_height, args.input_width, engine)
+                    output = output.reshape(57, int(args.input_height/8), int(args.input_width/8)).transpose((1,2,0))
+                    heatMat, pafMat = output[:,:,:19], output[:,:,19:]
+
                 humans = PoseEstimator.estimate(heatMat, pafMat)
    
                 for human in humans :

@@ -43,12 +43,14 @@ if __name__ == '__main__':
         image_input = image.transpose((2,0,1)).astype(np.float32).copy()
         print('image input dim is ', image_input.shape)
         if not args.caffe : 
-            output = create_engine(image_input, args.engine,  args.graph,  57, args.input_height, args.input_width, 'image', 'Openpose/concat_stage7')
+            engine = create_engine(args.engine,  args.graph, args.input_height, args.input_width,  'image', 'Openpose/concat_stage7')
+            output = tensorrt_inference(image_input, 57, args.input_height, args.input_width,engine)
             output = output.reshape(57, int(args.input_height/8), int(args.input_width/8)).transpose((1,2,0))
             heatMat, pafMat = output[:,:,:19], output[:,:,19:]
 
         else:
-            output = create_engine_from_caffe(image_input / 256 - 0.5, args.engine, args.caffemodel, args.proto, 57, args.input_height, args.input_width, 'image', 'net_output')
+            engine = create_engine_from_caffe(args.engine, args.caffemodel, args.proto,  'image', 'net_output')
+            output = tensorrt_inference(image_input / 256 - 0.5, 57, args.input_height, args.input_width, engine)
             output = output.reshape(57, int(args.input_height/8), int(args.input_width/8)).transpose((1,2,0))
             heatMat, pafMat = output[:,:,:19], output[:,:,19:]
 
