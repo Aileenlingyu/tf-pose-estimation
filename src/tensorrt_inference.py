@@ -10,7 +10,7 @@ import argparse
 from tensorflow.python.client import timeline
 
 from common import  CocoPairsRender, read_imgfile, CocoColors
-from estimator import PoseEstimator , TfPoseEstimator 
+from estimator import PoseEstimator , TfPoseEstimator , write_coco_json
 from networks import get_network
 from pose_dataset import CocoPose
 
@@ -25,8 +25,8 @@ config.gpu_options.allow_growth = True
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Tensorflow Openpose Inference')
-    parser.add_argument('--imgpath', type=str, default='./images/ski.jpg')
-    parser.add_argument('--input-width', type=int, default=432)
+    parser.add_argument('--imgpath', type=str, default='./images/p2.jpg')
+    parser.add_argument('--input-width', type=int, default=368)
     parser.add_argument('--input-height', type=int, default=368)
     parser.add_argument('--stage-level', type=int, default=6)
     parser.add_argument('--graph', type=str, default='./models/graph/mobilenet_thin_432x368/graph_opt.pb')
@@ -44,7 +44,8 @@ if __name__ == '__main__':
         print('image input dim is ', image_input.shape)
         if not args.caffe : 
             engine = create_engine(args.engine,  args.graph, args.input_height, args.input_width,  'image', 'Openpose/concat_stage7')
-            output = tensorrt_inference(image_input, 57, args.input_height, args.input_width,engine)
+            context = engine.create_execution_context()
+            output = tensorrt_inference(image_input, 57, args.input_height, args.input_width, context)
             output = output.reshape(57, int(args.input_height/8), int(args.input_width/8)).transpose((1,2,0))
             heatMat, pafMat = output[:,:,:19], output[:,:,19:]
 
@@ -57,6 +58,10 @@ if __name__ == '__main__':
         a = time.time()
         humans = PoseEstimator.estimate(heatMat, pafMat)
         logging.info('pose- elapsed_time={}'.format(time.time() - a))
+   
+        for human in humans :
+            res = write_coco_json(human, args.input_width, args.input_height)
+            print(res)
 
         logging.info('image={} heatMap={} pafMat={}'.format(image.shape, heatMat.shape, pafMat.shape))
         process_img = CocoPose.display_image(image, heatMat, pafMat, as_numpy=True)

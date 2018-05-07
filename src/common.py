@@ -133,3 +133,16 @@ def get_sample_images(w, h):
         read_imgfile('./images/p3_dance.png', w, h),
     ]
     return val_image
+
+def write_coco_json(human, image_w, image_h):
+    keypoints = []
+    transform_list = [0, 15, 14, 17, 16, 5, 2, 6, 3, 7, 4, 11, 8, 12, 9, 13, 10]
+    #transform_list = list(range(18))
+    for i in transform_list:
+        if i not in human.body_parts.keys():
+            # keypoints.extend([image_w/2, image_h/2, 0])
+            keypoints.extend([0, 0, 0])
+            continue
+        body_part = human.body_parts[i]
+        keypoints.extend([round_int(body_part.x * image_w), round_int(body_part.y * image_h), 2])
+    return keypoints

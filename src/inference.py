@@ -12,6 +12,7 @@ from common import  CocoPairsRender, read_imgfile, CocoColors
 from estimator import PoseEstimator , TfPoseEstimator 
 from networks import get_network
 from pose_dataset import CocoPose
+from estimator import write_coco_json
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 
@@ -67,11 +68,13 @@ if __name__ == '__main__':
             avg += time.time() - a
         logging.info('prediction avg= %f' % (avg / 10))
 
-
         logging.info('pose+')
         a = time.time()
         humans = PoseEstimator.estimate(heatMat, pafMat)
         logging.info('pose- elapsed_time={}'.format(time.time() - a))
+        for human in humans:
+            res = write_coco_json(human, args.input_width, args.input_height)
+            print(res)
 
         logging.info('image={} heatMap={} pafMat={}'.format(image.shape, heatMat.shape, pafMat.shape))
         process_img = CocoPose.display_image(image, heatMat, pafMat, as_numpy=True)

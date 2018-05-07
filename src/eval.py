@@ -16,6 +16,7 @@ from tf_tensorrt_convert import *
 from pose_dataset import CocoPose
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
+from estimator import write_coco_json
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 
@@ -24,21 +25,7 @@ config.gpu_options.allocator_type = 'BFC'
 config.gpu_options.per_process_gpu_memory_fraction = 0.95
 config.gpu_options.allow_growth = True
 
-def round_int(val):
-    return int(round(val))
-    
-def write_coco_json(human, image_w, image_h):
-    keypoints = []
-    transform_list = [0, 15, 14, 17, 16, 5, 2, 6, 3, 7, 4, 11, 8, 12, 9, 13, 10]
-    #transform_list = list(range(18))
-    for i in transform_list:
-        if i not in human.body_parts.keys():
-            # keypoints.extend([image_w/2, image_h/2, 0])
-            keypoints.extend([0, 0, 0])
-            continue
-        body_part = human.body_parts[i]
-        keypoints.extend([round_int(body_part.x * image_w), round_int(body_part.y * image_h), 2])
-    return keypoints
+
 
 def compute_oks(keypoints, anns):
     sigmas = np.array([.26, .25, .25, .35, .35, .79, .79, .72, .72, .62, .62, 1.07, 1.07, .87, .87, .89, .89]) / 10.0
@@ -83,6 +70,7 @@ if __name__ == '__main__':
     parser.add_argument('--use_tensorrt', type=bool, default=False)
     parser.add_argument('--model', type=str, default='mobilenet_thin', help='mobilenet_original / mobilenet_thin')
     parser.add_argument('--engine',  type=str, default="mobilepose_thin_656x368.engine")
+    parser.add_argument('--half16', type=bool, default=False)
     parser.add_argument('--graph', type=str, default="graph_opt.pb")
     parser.add_argument('--image_dir', type=str, default='/home/zaikun/hdd/data/keypoint/val2017/')
     parser.add_argument('--coco_json_file', type = str, default = '/home/zaikun/hdd/data/keypoint/annotations/person_keypoints_val2017.json')
@@ -106,10 +94,12 @@ if __name__ == '__main__':
         with tf.Session(config=config) as sess:
             if not args.use_tensorrt:
                 net, _, last_layer = get_network(args.model, input_node, sess)
-                engine = None
+                context = None
             else:
                 net, last_layer = None, None
-                engine = create_engine(args.engine,  args.graph, args.input_height, args.input_width,  'image', 'Openpose/concat_stage7')
+                engine = create_engine(args.engine,  args.graph, args.input_height, args.input_width,  'image', 'Openpose/concat_stage7', args.half16)
+                context = engine.create_execution_context()
+
             for i, image_id in enumerate(tqdm(keys)):
                 #image_id = int(getLastName(img))
                 img_meta = cocoGt.imgs[image_id]
@@ -136,14 +126,15 @@ if __name__ == '__main__':
                     )
                     heatMat, pafMat = heatMat[0], pafMat[0]
                 else:
-                    output = tensorrt_inference(image, 57, args.input_height, args.input_width, engine)
+                    image_input = image.transpose((2,0,1)).astype(np.float32).copy()
+                    output = tensorrt_inference(image_input, 57, args.input_height, args.input_width, context)
                     output = output.reshape(57, int(args.input_height/8), int(args.input_width/8)).transpose((1,2,0))
                     heatMat, pafMat = output[:,:,:19], output[:,:,19:]
 
                 humans = PoseEstimator.estimate(heatMat, pafMat)
    
                 for human in humans :
-                    #import pdb; pdb.set_trace();
+                    # import pdb; pdb.set_trace();
                     res = write_coco_json(human, img_meta['width'], img_meta['height'])
                     item['keypoints'] = res
                     item['image_id'] = image_id
@@ -165,7 +156,6 @@ if __name__ == '__main__':
     cocoEval.summarize()
 
     pred = json.load(open(write_json, 'r'))
-    print('AP50')
     scores = [ x['score'] for x in pred]
     ap50 = compute_ap(scores, 0.5)
     print('ap50 is %f' % ap50)

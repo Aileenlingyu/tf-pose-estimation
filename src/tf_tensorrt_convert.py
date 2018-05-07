@@ -12,7 +12,7 @@ G_LOGGER = trt.infer.ConsoleLogger(trt.infer.LogSeverity.ERROR)
 
 
 def create_engine(name, model_path, height, width, input_layer='image',
-                  output_layer='Openpose/concat_stage7'):
+                  output_layer='Openpose/concat_stage7', half16=False):
     if not os.path.exists(name):
         # Load your newly created Tensorflow frozen model and convert it to UFF
         # import pdb; pdb.set_trace();
@@ -32,15 +32,15 @@ def create_engine(name, model_path, height, width, input_layer='image',
                                              uff_model,
                                              parser,
                                              1,
-                                             1 << 20)
+                                             1 << 20,
+                                             datatype=trt.infer.DataType.FLOAT if not half16 else trt.infer.DataType.HALF)
         trt.utils.write_engine_to_file(name, engine.serialize())
     else:
         engine = trt.utils.load_engine(G_LOGGER, name)
 
     return engine
 
-def tensorrt_inference(img, c_o, height, width, engine):
-    context = engine.create_execution_context()
+def tensorrt_inference(img, c_o, height, width, context):
     output = np.empty(c_o * int(height/8) * int(width/8), dtype=np.float32)
     # alocate device memory
     d_input = cuda.mem_alloc(1 * img.size * img.dtype.itemsize)
@@ -52,6 +52,7 @@ def tensorrt_inference(img, c_o, height, width, engine):
     # execute model
     # import pdb; pdb.set_trace();
     start = time.time()
+    
     context.enqueue(1, bindings, stream.handle, None)
     #end = time.time()
     #print('prediction on single image run 10 times takes {}s'.format(end - start))
