@@ -59,10 +59,6 @@ if __name__ == '__main__':
         a = time.time()
         humans = PoseEstimator.estimate(heatMat, pafMat)
         logging.info('pose- elapsed_time={}'.format(time.time() - a))
-   
-        for human in humans :
-            res = write_coco_json(human, args.input_width, args.input_height)
-            print(res)
 
         logging.info('image={} heatMap={} pafMat={}'.format(image.shape, heatMat.shape, pafMat.shape))
         process_img = CocoPose.display_image(image, heatMat, pafMat, as_numpy=True)
@@ -82,4 +78,3 @@ if __name__ == '__main__':
         #cv2.imshow('result', convas)
         #cv2.waitKey(0)
         cv2.imwrite("tmp.jpg", convas)
-        tf.train.write_graph(sess.graph_def, '.', 'graph-tmp.pb', as_text=True)
