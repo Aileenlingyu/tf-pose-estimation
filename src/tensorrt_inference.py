@@ -30,6 +30,7 @@ if __name__ == '__main__':
     parser.add_argument('--input-height', type=int, default=368)
     parser.add_argument('--stage-level', type=int, default=6)
     parser.add_argument('--graph', type=str, default='./models/graph/mobilenet_thin_432x368/graph_opt.pb')
+    parser.add_argument('--half16', type=bool, default = False)
     parser.add_argument('--model', type=str, default='mobilenet_thin', help='cmu / mobilenet / mobilenet_accurate / mobilenet_fast')
     parser.add_argument('--engine', type=str, default='mobilenet_thin.engine')
     parser.add_argument('--caffe', type=bool, default=False)
@@ -43,14 +44,14 @@ if __name__ == '__main__':
         image_input = image.transpose((2,0,1)).astype(np.float32).copy()
         print('image input dim is ', image_input.shape)
         if not args.caffe : 
-            engine = create_engine(args.engine,  args.graph, args.input_height, args.input_width,  'image', 'Openpose/concat_stage7')
+            engine = create_engine(args.engine,  args.graph, args.input_height, args.input_width,  'image', 'Openpose/concat_stage7', args.half16)
             context = engine.create_execution_context()
             output = tensorrt_inference(image_input, 57, args.input_height, args.input_width, context)
             output = output.reshape(57, int(args.input_height/8), int(args.input_width/8)).transpose((1,2,0))
             heatMat, pafMat = output[:,:,:19], output[:,:,19:]
 
         else:
-            engine = create_engine_from_caffe(args.engine, args.caffemodel, args.proto,  'image', 'net_output')
+            engine = create_engine_from_caffe(args.engine, args.caffemodel, args.proto,  'image', 'net_output', args.half16)
             output = tensorrt_inference(image_input / 256 - 0.5, 57, args.input_height, args.input_width, engine)
             output = output.reshape(57, int(args.input_height/8), int(args.input_width/8)).transpose((1,2,0))
             heatMat, pafMat = output[:,:,:19], output[:,:,19:]

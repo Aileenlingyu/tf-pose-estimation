@@ -53,7 +53,7 @@ class ImageBatchStream():
         self.calibration_data = np.zeros((batch_size, 3, height, width), \
                                          dtype=np.float32)
         self.batch = 0
-        #self.preprocessor = preprocessor
+        self.preprocessor = preprocessor
          
 
     @staticmethod
@@ -75,7 +75,7 @@ class ImageBatchStream():
             for f in files_for_batch:
                 print("[ImageBatchStream] Processing ", f)
                 img = ImageBatchStream.read_image_chw(f, self.width, self.height)
-                #img = self.preprocessor(img)
+                img = self.preprocessor(img)
                 imgs.append(img)
             for i in range(len(imgs)):
                 self.calibration_data[i] = imgs[i]

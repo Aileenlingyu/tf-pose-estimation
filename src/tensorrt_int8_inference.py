@@ -12,7 +12,7 @@ import tensorrt as trt
 import calibrator    #calibrator.py
 import cv2 
 
-DATA_DIR = '/home/zaikun/hdd/data/coco_gender/val_2017/'
+DATA_DIR = '/home/zaikun/hdd/data/coco_2014/val2014/'
 CALIBRATION_DATASET_LOC = DATA_DIR + '*.jpg'
 
 def create_calibration_dataset():
@@ -34,7 +34,7 @@ if __name__ == '__main__':
                            deployfile="./models/pretrained/cmupose/pose_deploy_linevec.prototxt",
                            modelfile= "./models/pretrained/cmupose/pose_iter_440000.caffemodel",
                            max_batch_size=10,
-                           max_workspace_size=(256 << 20),
+                           max_workspace_size=(1 << 20),
                            input_nodes={"image":(3, args.input_height, args.input_width)},
                            output_nodes=["net_output"],
                            #preprocessors={"image":sub_mean_chw},

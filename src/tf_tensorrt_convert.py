@@ -67,7 +67,7 @@ def tensorrt_inference(img, c_o, height, width, context):
     return output
 
 
-def create_engine_from_caffe(name, model, proto, input_layer, output_layer):
+def create_engine_from_caffe(name, model, proto, input_layer, output_layer, half16=False):
     G_LOGGER = trt.infer.ConsoleLogger(trt.infer.LogSeverity.ERROR)
     if not os.path.exists(name):
         engine = trt.utils.caffe_to_trt_engine(G_LOGGER,
@@ -76,7 +76,7 @@ def create_engine_from_caffe(name, model, proto, input_layer, output_layer):
                                        1,
                                        1 << 20,
                                        [output_layer],
-                                       trt.infer.DataType.FLOAT)
+                                       trt.infer.DataType.FLOAT if not half16 else trt.infer.DataType.HALF)
         
         trt.utils.write_engine_to_file(name, engine.serialize())
     else:
