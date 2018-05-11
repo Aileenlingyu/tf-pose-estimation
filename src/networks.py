@@ -9,6 +9,7 @@ from network_cmu import CmuNetwork
 from resnet32 import Resnet32
 from network_mobilenet_fast import MobilenetNetworkFast
 
+base_path = "/home/zaikun/hdd/tf-pose-zaikun/"
 def _get_base_path():
     if not os.environ.get('OPENPOSE_MODEL', ''):
         return './models'
@@ -75,23 +76,23 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
         else:
             s = '%dx%d' % (placeholder_input.shape[2], placeholder_input.shape[1])
             ckpts = {
-                'mobilenet': 'trained/mobilenet_%s/model-53008' % s,
-                'mobilenet_thin' : 'trained/mobilenet_thin_432x368/model-160001',
-                'mobilenet_original': 'trained/mobilenet_thin_benchmark/model-388003',
-                'vgg16x4' : 'trained/vgg16x4_0.75/model-35000',
+                'mobilenet': 'models/trained/mobilenet_%s/model-53008' % s,
+                'mobilenet_thin' : 'models/trained/mobilenet_thin_432x368/model-160001',
+                'mobilenet_original': 'models/trained/mobilenet_thin_benchmark/model-388003',
+                'vgg16x4' : 'models/trained/vgg16x4_0.75/model-35000',
             }
             loader = tf.train.Saver()
-            loader.restore(sess_for_load, os.path.join(_get_base_path(), ckpts[type]))
+            loader.restore(sess_for_load, os.path.join(base_path,  ckpts[type]))
 
     return net, os.path.join(_get_base_path(), pretrain_path), last_layer
 
 
 def get_graph_path(model_name):
     return {
-        'cmu_640x480': './models/graph/cmu_640x480/graph_opt.pb',
-        'vgg_656x368'        : './models/graph/vgg/graph_zaikun_opt.pb',
-        'mobilenet_thin_440x256': './models/graph/mobilenet_thinzaikun_440x256/graph_opt.pb',
-        'mobilenet_original_432x368': './models/graph/mobilenet_thin_432x368/graph_opt.pb',
+        'cmu_640x480': os.path.join(base_path,'models/graph/cmu_640x480/graph_opt.pb'),
+        'vgg_656x368'        : os.path.join(base_path, 'models/graph/vgg/graph_zaikun_opt.pb'),
+        'mobilenet_original_432x368': os.path.join(base_path, './models/graph/mobilenet_thin_432x368/graph_opt.pb'),
+        'mobilenet_thin_656x368': os.path.join(base_path, './models/graph/mobilenet_thinzaikun_656x368/graph_opt.pb')
 
     }[model_name]
 

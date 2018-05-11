@@ -276,8 +276,9 @@ class PoseEstimator:
 
 
 class TfPoseEstimator:
-    def __init__(self, graph_path, use_tensorrt = False, target_size=(320, 240)):
+    def __init__(self, graph_path, use_tensorrt = False, fp_mode= 'FP32', target_size=(320, 240)):
         self.target_size = target_size
+        print('fp mode is {}'.format(fp_mode))
         graph_def = None
         if use_tensorrt and tf.__version__ > '1.7':
             graph_def = trt.create_inference_graph(
@@ -285,7 +286,10 @@ class TfPoseEstimator:
                 outputs=['Openpose/concat_stage7'],
                 max_batch_size=1,
                 max_workspace_size_bytes=1>>16,
-                precision_mode='FP32')
+                precision_mode=fp_mode)
+            if fp_mode == "INT8":
+                graph_def = trt.calib_graph_to_infer_graph(graph_def)
+
         else:
             with tf.gfile.GFile(graph_path, 'rb') as f:
                 graph_def = tf.GraphDef()
