@@ -87,6 +87,7 @@ class Smoother(object):
              padding='SAME'):
         # Get the number of channels in the input
         c_i = input.get_shape().as_list()[3]
+        c_i = 19
         # Convolution for a given input and kernel
         convolve = lambda i, k: tf.nn.depthwise_conv2d(i, k, [1, 1, 1, 1], padding=padding)
         with tf.variable_scope(name) as scope:
