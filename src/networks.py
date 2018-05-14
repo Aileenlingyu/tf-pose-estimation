@@ -3,7 +3,7 @@ import tensorflow as tf
 from network_mobilenet import MobilenetNetwork
 from network_mobilenet_thin import MobilenetNetworkThin
 from network_mobilenet_original import MobilenetNetworkOriginal
-
+from network_mobilenet_v2 import MobilenetNetworkV2
 from network_vgg16x4 import VGG16x4Network
 from network_cmu import CmuNetwork
 from resnet32 import Resnet32
@@ -43,7 +43,7 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
         last_layer = 'MConv_Stage6_L{aux}_5'
 
     elif type == 'mobilenet_v2':
-        net = MobilenetNetworkV2Hyperfeature({'image': placeholder_input}, conv_width=1, conv_width2=0.50, trainable=trainable)
+        net = MobilenetNetworkV2({'image': placeholder_input}, conv_width=1, conv_width2=0.50, trainable=trainable)
         pretrain_path = 'pretrained/mobilenet_v2/model.ckpt-1450000'
         last_layer = 'MConv_Stage6_L{aux}_5'
 
@@ -79,6 +79,7 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
                 'mobilenet': 'models/trained/mobilenet_%s/model-53008' % s,
                 'mobilenet_thin' : 'models/trained/mobilenet_thin_432x368/model-160001',
                 'mobilenet_original': 'models/trained/mobilenet_thin_benchmark/model-388003',
+                'mobilenet_v2': 'models/trained/mobilenet_v2/model-218000',
                 'vgg16x4' : 'models/trained/vgg16x4_0.75/model-35000',
             }
             loader = tf.train.Saver()
@@ -92,7 +93,8 @@ def get_graph_path(model_name):
         'cmu_640x480': os.path.join(base_path,'models/graph/cmu_640x480/graph_opt.pb'),
         'vgg_656x368'        : os.path.join(base_path, 'models/graph/vgg/graph_zaikun_opt.pb'),
         'mobilenet_original_432x368': os.path.join(base_path, './models/graph/mobilenet_thin_432x368/graph_opt.pb'),
-        'mobilenet_thin_656x368': os.path.join(base_path, './models/graph/mobilenet_thinzaikun_656x368/graph_opt.pb')
+        'mobilenet_thin_656x368': os.path.join(base_path, './models/graph/mobilenet_thinzaikun_656x368/graph_opt.pb'),
+        'mobilenet_v2_432x368': os.path.join(base_path, './models/graph/mobilenet_v2/graph_freeze.pb'),
 
     }[model_name]
 
