@@ -1,7 +1,6 @@
 import tensorflow as tf
 
 import network_base
-<<<<<<< 404dca189fff1cf6f96fc01e3e9d4c369365fdbe
 class MobilenetNetworkV2(network_base.BaseNetwork):
     def __init__(self, inputs, trainable=True, conv_width=1.0, conv_width2=1.0):
         self.conv_width = conv_width

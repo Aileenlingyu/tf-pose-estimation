@@ -21,16 +21,6 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
         pretrain_path = 'pretrained/mobilenet_v1_0.75_224_2017_06_14/mobilenet_v1_0.75_224.ckpt'
         last_layer = 'MConv_Stage6_L{aux}_5'
 
-    elif type == 'mobilenet_hg':
-        net = MobilenetHourglass({'image': placeholder_input}, conv_width=0.75, conv_width2=0.5, trainable=trainable)
-        pretrain_path = 'pretrained/mobilenet_v1_0.75_224_2017_06_14/mobilenet_v1_0.75_224.ckpt'
-        last_layer = 'MConv_Stage6_L{aux}_5'
-
-    elif type == 'mobilenet_hg_shared':
-        net = MobilenetHourglassShared({'image': placeholder_input}, conv_width=0.75, conv_width2=0.5, trainable=trainable)
-        pretrain_path = 'pretrained/mobilenet_v1_0.75_224_2017_06_14/mobilenet_v1_0.75_224.ckpt'
-        last_layer = 'MConv_Stage6_L{aux}_5'
-
     elif type == 'mobilenet_fast':
         net = MobilenetNetworkFast({'image': placeholder_input}, conv_width=0.5, conv_width2=0.5, trainable=trainable)
         pretrain_path = 'pretrained/mobilenet_v1_0.50_224_2017_06_14/mobilenet_v1_0.50_224.ckpt'
@@ -41,7 +31,7 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
         pretrain_path = 'pretrained/mobilenet_v1_1.0_224_2017_06_14/mobilenet_v1_1.0_224.ckpt'
         last_layer = 'MConv_Stage6_L{aux}_5'
     elif type == 'mobilenet_thin':
-        net = MobilenetNetworkThin({'image': placeholder_input}, conv_width=0.75, conv_width2=0.50, trainable=trainable)
+        net = MobilenetNetworkThin({'image': placeholder_input}, conv_width=0.75, conv_width2=0.750, trainable=trainable)
         pretrain_path = 'pretrained/mobilenet_v1_0.75_224_2017_06_14/mobilenet_v1_0.75_224.ckpt'
         last_layer = 'MConv_Stage6_L{aux}_5'
     elif type == 'mobilenet_v2':
@@ -73,12 +63,9 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
                 raise Exception('Model file doesn\'t exist, path=%s' % pretrain_path_full)
             net.load(os.path.join(_get_base_path(), pretrain_path), sess_for_load)
         else:
-            s = '%dx%d' % (placeholder_input.shape[2], placeholder_input.shape[1])
             ckpts = {
-                'mobilenet': 'trained/mobilenet_%s/model-53008' % s,
-                'mobilenet_thin': 'trained/mobilenet_thin_432x368_stride5/model-26000',
-                'mobilenet_fast': 'trained/mobilenet_fast_%s/model-189000' % s,
-                'mobilenet_accurate': 'trained/mobilenet_accurate/model-170000',
+                'mobilenet_thin': 'trained/mobilenet_thin_432x368/model-160001',
+                'mobilenet_kim': 'trained/mobilenet_thin_original/model-388003',
                 'vgg': 'trained/vgg/model-31000'
             }
             ckpt_path = os.path.join(_get_base_path(), ckpts[type])
@@ -94,7 +81,8 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
 def get_graph_path(model_name):
     dyn_graph_path = {
         'cmu': './models/graph/cmu/graph_opt.pb',
-        'mobilenet_thin': './models/graph/mobilenet_thin/graph_opt.pb'
+        'mobilenet_kim': './models/graph/mobilenet_thin/graph_opt.pb', 
+        'mobilenet_thin' : './tmp/graph_opt.pb'
     }
     graph_path = dyn_graph_path[model_name]
     for path in (graph_path, os.path.join(os.path.dirname(os.path.abspath(__file__)), graph_path), os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', graph_path)):
