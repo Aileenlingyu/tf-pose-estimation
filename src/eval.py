@@ -49,7 +49,8 @@ if __name__ == '__main__':
     parser.add_argument('--cocoyear', type=str, default='2014')
     parser.add_argument('--coco-dir', type=str, default='/data/public/rw/coco/')
     parser.add_argument('--data-idx', type=int, default=-1)
-    parser.add_argument('--engine', type=str, default="")
+    parser.add_argument('--user_tensorrt', type=bool, default=False)
+    parser.add_argument('--fp_mode', type=str, default="FP32")
     parser.add_argument('--multi-scale', type=bool, default=False)
     args = parser.parse_args()
 
@@ -77,9 +78,9 @@ if __name__ == '__main__':
     logger.debug('initialization %s : %s' % (args.model, get_graph_path(args.model)))
     w, h = model_wh(args.resize)
     if w == 0 or h == 0:
-        e = TfPoseEstimator(get_graph_path(args.model), target_size=(432, 368))
+        e = TfPoseEstimator(get_graph_path(args.model), args.use_tensorrt, args.fp_mode, target_size=(432, 368))
     else:
-        e = TfPoseEstimator(get_graph_path(args.model), target_size=(w, h))
+        e = TfPoseEstimator(get_graph_path(args.model), args.use_tensorrt, args.fp_mode, target_size=(w, h))
 
     result = []
     for i, k in enumerate(tqdm(keys)):

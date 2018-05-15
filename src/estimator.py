@@ -1,15 +1,18 @@
+import itertools
 import logging
-import slidingwindow as sw
-
-from pafprocess import pafprocess
+import math
+from collections import namedtuple
+from pose_dataset import CocoPose
 import cv2
 import numpy as np
 import tensorflow as tf
-import time
+if tf.__version__ > '1.7':
+    import tensorflow.contrib.tensorrt as trt 
+
+from scipy.ndimage import maximum_filter, gaussian_filter
 
 import common
-from common import CocoPart
-from tensblur.smoother import Smoother
+from common import CocoPairsNetwork, CocoPairs, CocoPart
 
 logger = logging.getLogger('TfPoseEstimator')
 logger.setLevel(logging.INFO)
@@ -18,12 +21,35 @@ formatter = logging.Formatter('[%(asctime)s] [%(name)s] [%(levelname)s] %(messag
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
+def load_graph(graph_path):
+    with tf.gfile.GFile(graph_path, 'rb') as f : 
+        graph_def = tf.GraphDef()
+        graph_def.ParseFromString(f.read())
+    return graph_def
+
+def round_int(val):
+    return int(round(val))
+    
+
+def write_coco_json(human, image_w, image_h):
+    keypoints = []
+    transform_list = [0, 15, 14, 17, 16, 5, 2, 6, 3, 7, 4, 11, 8, 12, 9, 13, 10]
+    #transform_list = list(range(18))
+    for i in transform_list:
+        if i not in human.body_parts.keys():
+            # keypoints.extend([image_w/2, image_h/2, 0])
+            keypoints.extend([0, 0, 0])
+            continue
+        body_part = human.body_parts[i]
+        keypoints.extend([round_int(body_part.x * image_w), round_int(body_part.y * image_h), 2])
+    return keypoints
+
 
 class Human:
     """
     body_parts: list of BodyPart
     """
-    __slots__ = ('body_parts', 'pairs', 'uidx_list', 'score')
+    __slots__ = ('body_parts', 'pairs', 'uidx_list')
 
     def __init__(self, pairs):
         self.pairs = []
@@ -31,7 +57,6 @@ class Human:
         self.body_parts = {}
         for pair in pairs:
             self.add_pair(pair)
-        self.score = 0.0
 
     @staticmethod
     def _get_uidx(part_idx, idx):
@@ -87,105 +112,210 @@ class BodyPart:
 
 
 class PoseEstimator:
+    heatmap_supress = False
+    heatmap_gaussian = False
+    adaptive_threshold = False
+
+    NMS_Threshold = 0.15
+    Local_PAF_Threshold = 0.2
+    PAF_Count_Threshold = 5
+    Part_Count_Threshold = 4
+    Part_Score_Threshold = 4.5
+
+    # NMS_Threshold = 0.1
+    # Local_PAF_Threshold = 0.5
+    # PAF_Count_Threshold = 9
+    # Part_Count_Threshold = 4
+    # Part_Score_Threshold = 0.7
+
+    PartPair = namedtuple('PartPair', [
+        'score',
+        'part_idx1', 'part_idx2',
+        'idx1', 'idx2',
+        'coord1', 'coord2',
+        'score1', 'score2'
+    ], verbose=False)
+
     def __init__(self):
         pass
 
     @staticmethod
-    def estimate_paf(peaks, heat_mat, paf_mat):
-        pafprocess.process_paf(peaks, heat_mat, paf_mat)
-        humans = []
-        for human_id in range(pafprocess.get_num_humans()):
-            human = Human([])
-            is_added = False
+    def non_max_suppression(plain, window_size=3, threshold=NMS_Threshold):
+        under_threshold_indices = plain < threshold
+        plain[under_threshold_indices] = 0
+        return plain * (plain == maximum_filter(plain, footprint=np.ones((window_size, window_size))))
 
-            for part_idx in range(18):
-                c_idx = int(pafprocess.get_part_cid(human_id, part_idx))
-                if c_idx < 0:
+    @staticmethod
+    def estimate(heat_mat, paf_mat):
+        if heat_mat.shape[2] == 19:
+            heat_mat = np.rollaxis(heat_mat, 2, 0)
+        if paf_mat.shape[2] == 38:
+            paf_mat = np.rollaxis(paf_mat, 2, 0)
+
+        if PoseEstimator.heatmap_supress:
+            heat_mat = heat_mat - heat_mat.min(axis=1).min(axis=1).reshape(19, 1, 1)
+            heat_mat = heat_mat - heat_mat.min(axis=2).reshape(19, heat_mat.shape[1], 1)
+
+        if PoseEstimator.heatmap_gaussian:
+            heat_mat = gaussian_filter(heat_mat, sigma=0.5)
+
+        if PoseEstimator.adaptive_threshold:
+            _NMS_Threshold = max(np.average(heat_mat) * 4.0, PoseEstimator.NMS_Threshold)
+            _NMS_Threshold = min(_NMS_Threshold, 0.3)
+        else:
+            _NMS_Threshold = PoseEstimator.NMS_Threshold
+
+        # extract interesting coordinates using NMS.
+        coords = []     # [[coords in plane1], [....], ...]
+        for plain in heat_mat[:-1]:
+            nms = PoseEstimator.non_max_suppression(plain, 5, _NMS_Threshold)
+            coords.append(np.where(nms >= _NMS_Threshold))
+        pairs_by_conn = list()
+        for (part_idx1, part_idx2), (paf_x_idx, paf_y_idx) in zip(CocoPairs, CocoPairsNetwork):
+            pairs = PoseEstimator.score_pairs(
+                part_idx1, part_idx2,
+                coords[part_idx1], coords[part_idx2],
+                paf_mat[paf_x_idx], paf_mat[paf_y_idx],
+                heatmap=heat_mat,
+                rescale=(1.0 / heat_mat.shape[2], 1.0 / heat_mat.shape[1])
+            )
+
+            pairs_by_conn.extend(pairs)
+
+        # merge pairs to human
+        # pairs_by_conn is sorted by CocoPairs(part importance) and Score between Parts.
+        humans = [Human([pair]) for pair in pairs_by_conn]
+        while True:
+            merge_items = None
+            for k1, k2 in itertools.combinations(humans, 2):
+                if k1 == k2:
                     continue
+                if k1.is_connected(k2):
+                    merge_items = (k1, k2)
+                    break
 
-                is_added = True
-                human.body_parts[part_idx] = BodyPart(
-                    '%d-%d' % (human_id, part_idx), part_idx,
-                    float(pafprocess.get_part_x(c_idx)) / heat_mat.shape[1],
-                    float(pafprocess.get_part_y(c_idx)) / heat_mat.shape[0],
-                    pafprocess.get_part_score(c_idx)
-                )
+            if merge_items is not None:
+                merge_items[0].merge(merge_items[1])
+                humans.remove(merge_items[1])
+            else:
+                break
 
-            if is_added:
-                score = pafprocess.get_score(human_id)
-                human.score = score
-                humans.append(human)
+        # reject by subset count
+        humans = [human for human in humans if human.part_count() >= PoseEstimator.PAF_Count_Threshold]
+
+        # reject by subset max score
+        humans = [human for human in humans if human.get_max_score() >= PoseEstimator.Part_Score_Threshold]
 
         return humans
 
+    @staticmethod
+    def score_pairs(part_idx1, part_idx2, coord_list1, coord_list2, paf_mat_x, paf_mat_y, heatmap, rescale=(1.0, 1.0)):
+        connection_temp = []
+       # print(coord_list1)
+        cnt = 0
+        for idx1, (y1, x1) in enumerate(zip(coord_list1[0], coord_list1[1])):
+            for idx2, (y2, x2) in enumerate(zip(coord_list2[0], coord_list2[1])):
+                score, count = PoseEstimator.get_score(x1, y1, x2, y2, paf_mat_x, paf_mat_y)
+                cnt += 1
+                if count < PoseEstimator.PAF_Count_Threshold or score <= 0.0:
+                    continue
+                connection_temp.append(PoseEstimator.PartPair(
+                    score=score,
+                    part_idx1=part_idx1, part_idx2=part_idx2,
+                    idx1=idx1, idx2=idx2,
+                    coord1=(x1 * rescale[0], y1 * rescale[1]),
+                    coord2=(x2 * rescale[0], y2 * rescale[1]),
+                    score1=heatmap[part_idx1][y1][x1],
+                    score2=heatmap[part_idx2][y2][x2],
+                ))
+
+        connection = []
+        used_idx1, used_idx2 = set(), set()
+        for candidate in sorted(connection_temp, key=lambda x: x.score, reverse=True):
+            # check not connected
+            if candidate.idx1 in used_idx1 or candidate.idx2 in used_idx2:
+                continue
+            connection.append(candidate)
+            used_idx1.add(candidate.idx1)
+            used_idx2.add(candidate.idx2)
+
+        return connection
+
+    @staticmethod
+    def get_score(x1, y1, x2, y2, paf_mat_x, paf_mat_y):
+        __num_inter = 10
+        __num_inter_f = float(__num_inter)
+        dx, dy = x2 - x1, y2 - y1
+        normVec = math.sqrt(dx ** 2 + dy ** 2)
+
+        if normVec < 1e-4:
+            return 0.0, 0
+
+        vx, vy = dx / normVec, dy / normVec
+
+        xs = np.arange(x1, x2, dx / __num_inter_f) if x1 != x2 else np.full((__num_inter,), x1)
+        ys = np.arange(y1, y2, dy / __num_inter_f) if y1 != y2 else np.full((__num_inter,), y1)
+        xs = (xs + 0.5).astype(np.int8)
+        ys = (ys + 0.5).astype(np.int8)
+
+        # without vectorization
+        pafXs = np.zeros(__num_inter)
+        pafYs = np.zeros(__num_inter)
+        for idx, (mx, my) in enumerate(zip(xs, ys)):
+            pafXs[idx] = paf_mat_x[my][mx]
+            pafYs[idx] = paf_mat_y[my][mx]
+
+        # vectorization slow?
+        # pafXs = pafMatX[ys, xs]
+        # pafYs = pafMatY[ys, xs]
+
+        local_scores = pafXs * vx + pafYs * vy
+        thidxs = local_scores > PoseEstimator.Local_PAF_Threshold
+
+        return sum(local_scores * thidxs), sum(thidxs)
+
 
 class TfPoseEstimator:
-    # TODO : multi-scale
-
-    def __init__(self, graph_path, target_size=(320, 240)):
+    def __init__(self, graph_path, use_tensorrt = False, fp_mode= 'FP32', target_size=(320, 240)):
         self.target_size = target_size
+        print('fp mode is {}'.format(fp_mode))
+        graph_def = None
+        if use_tensorrt and tf.__version__ > '1.7':
+            graph_def = trt.create_inference_graph(
+                input_graph_def=load_graph(graph_path),
+                outputs=['Openpose/concat_stage7'],
+                max_batch_size=1,
+                max_workspace_size_bytes=1>>16,
+                precision_mode=fp_mode)
+            if fp_mode == "INT8":
+                graph_def = trt.calib_graph_to_infer_graph(graph_def)
 
-        # load graph
-        logger.info('loading graph from %s(default size=%dx%d)' % (graph_path, target_size[0], target_size[1]))
-        with tf.gfile.GFile(graph_path, 'rb') as f:
-            graph_def = tf.GraphDef()
-            graph_def.ParseFromString(f.read())
+        else:
+            with tf.gfile.GFile(graph_path, 'rb') as f:
+                graph_def = tf.GraphDef()
+                graph_def.ParseFromString(f.read())
 
         self.graph = tf.get_default_graph()
-        tf.import_graph_def(graph_def, name='TfPoseEstimator')
+        tf.import_graph_def(graph_def, name='')
         self.persistent_sess = tf.Session(graph=self.graph)
+        #for op in self.graph.get_operations():
+        #    print(op.name)
 
-        # for op in self.graph.get_operations():
-        #     print(op.name)
-        # for ts in [n.name for n in tf.get_default_graph().as_graph_def().node]:
-        #     print(ts)
-
-        self.tensor_image = self.graph.get_tensor_by_name('TfPoseEstimator/image:0')
-        self.tensor_output = self.graph.get_tensor_by_name('TfPoseEstimator/Openpose/concat_stage7:0')
-        self.tensor_heatMat = self.tensor_output[:, :, :, :19]
-        self.tensor_pafMat = self.tensor_output[:, :, :, 19:]
-        self.upsample_size = tf.placeholder(dtype=tf.int32, shape=(2, ), name='upsample_size')
-        self.tensor_heatMat_up = tf.image.resize_area(self.tensor_output[:, :, :, :19], self.upsample_size, align_corners=False, name='upsample_heatmat')
-        self.tensor_pafMat_up = tf.image.resize_area(self.tensor_output[:, :, :, 19:], self.upsample_size, align_corners=False, name='upsample_pafmat')
-        smoother = Smoother({'data': self.tensor_heatMat_up}, 25, 3.0)
-        gaussian_heatMat = smoother.get_output()
-
-        max_pooled_in_tensor = tf.nn.pool(gaussian_heatMat, window_shape=(3, 3), pooling_type='MAX', padding='SAME')
-        self.tensor_peaks = tf.where(tf.equal(gaussian_heatMat, max_pooled_in_tensor), gaussian_heatMat, tf.zeros_like(gaussian_heatMat))
+        self.tensor_image = self.graph.get_tensor_by_name('image:0')
+        self.tensor_output = self.graph.get_tensor_by_name('Openpose/concat_stage7:0')
 
         self.heatMat = self.pafMat = None
 
         # warm-up
-        self.persistent_sess.run(tf.variables_initializer(
-            [v for v in tf.global_variables() if
-             v.name.split(':')[0] in [x.decode('utf-8') for x in self.persistent_sess.run(tf.report_uninitialized_variables())]
-             ])
-        )
         self.persistent_sess.run(
-            [self.tensor_peaks, self.tensor_heatMat_up, self.tensor_pafMat_up],
+            self.tensor_output,
             feed_dict={
-                self.tensor_image: [np.ndarray(shape=(target_size[1], target_size[0], 3), dtype=np.float32)],
-                self.upsample_size: [target_size[1], target_size[0]]
-            }
-        )
-        self.persistent_sess.run(
-            [self.tensor_peaks, self.tensor_heatMat_up, self.tensor_pafMat_up],
-            feed_dict={
-                self.tensor_image: [np.ndarray(shape=(target_size[1], target_size[0], 3), dtype=np.float32)],
-                self.upsample_size: [target_size[1] // 2, target_size[0] // 2]
-            }
-        )
-        self.persistent_sess.run(
-            [self.tensor_peaks, self.tensor_heatMat_up, self.tensor_pafMat_up],
-            feed_dict={
-                self.tensor_image: [np.ndarray(shape=(target_size[1], target_size[0], 3), dtype=np.float32)],
-                self.upsample_size: [target_size[1] // 4, target_size[0] // 4]
+                self.tensor_image: [np.ndarray(shape=(target_size[1], target_size[0], 3), dtype=np.float32)]
             }
         )
 
     def __del__(self):
-        # self.persistent_sess.close()
-        pass
+        self.persistent_sess.close()
 
     @staticmethod
     def _quantize_img(npimg):
@@ -217,148 +347,28 @@ class TfPoseEstimator:
                 if pair[0] not in human.body_parts.keys() or pair[1] not in human.body_parts.keys():
                     continue
 
-                #npimg = cv2.line(npimg, centers[pair[0]], centers[pair[1]], common.CocoColors[pair_order], 3)
-                cv2.line(npimg, centers[pair[0]], centers[pair[1]], common.CocoColors[pair_order], 3)
+                npimg = cv2.line(npimg, centers[pair[0]], centers[pair[1]], common.CocoColors[pair_order], 3)
 
         return npimg
 
-    def _get_scaled_img(self, npimg, scale):
-        get_base_scale = lambda s, w, h: max(self.target_size[0] / float(h), self.target_size[1] / float(w)) * s
-        img_h, img_w = npimg.shape[:2]
-
-        if scale is None:
-            if npimg.shape[:2] != (self.target_size[1], self.target_size[0]):
-                # resize
-                npimg = cv2.resize(npimg, self.target_size, interpolation=cv2.INTER_CUBIC)
-            return [npimg], [(0.0, 0.0, 1.0, 1.0)]
-        elif isinstance(scale, float):
-            # scaling with center crop
-            base_scale = get_base_scale(scale, img_w, img_h)
-            npimg = cv2.resize(npimg, dsize=None, fx=base_scale, fy=base_scale, interpolation=cv2.INTER_CUBIC)
-
-            o_size_h, o_size_w = npimg.shape[:2]
-            if npimg.shape[0] < self.target_size[1] or npimg.shape[1] < self.target_size[0]:
-                newimg = np.zeros(
-                    (max(self.target_size[1], npimg.shape[0]), max(self.target_size[0], npimg.shape[1]), 3),
-                    dtype=np.uint8)
-                newimg[:npimg.shape[0], :npimg.shape[1], :] = npimg
-                npimg = newimg
-
-            windows = sw.generate(npimg, sw.DimOrder.HeightWidthChannel, self.target_size[0], self.target_size[1], 0.2)
-
-            rois = []
-            ratios = []
-            for window in windows:
-                indices = window.indices()
-                roi = npimg[indices]
-                rois.append(roi)
-                ratio_x, ratio_y = float(indices[1].start) / o_size_w, float(indices[0].start) / o_size_h
-                ratio_w, ratio_h = float(indices[1].stop - indices[1].start) / o_size_w, float(
-                    indices[0].stop - indices[0].start) / o_size_h
-                ratios.append((ratio_x, ratio_y, ratio_w, ratio_h))
-
-            return rois, ratios
-        elif isinstance(scale, tuple) and len(scale) == 2:
-            # scaling with sliding window : (scale, step)
-            base_scale = get_base_scale(scale[0], img_w, img_h)
-            npimg = cv2.resize(npimg, dsize=None, fx=base_scale, fy=base_scale, interpolation=cv2.INTER_CUBIC)
-            o_size_h, o_size_w = npimg.shape[:2]
-            if npimg.shape[0] < self.target_size[1] or npimg.shape[1] < self.target_size[0]:
-                newimg = np.zeros((max(self.target_size[1], npimg.shape[0]), max(self.target_size[0], npimg.shape[1]), 3), dtype=np.uint8)
-                newimg[:npimg.shape[0], :npimg.shape[1], :] = npimg
-                npimg = newimg
-
-            window_step = scale[1]
-
-            windows = sw.generate(npimg, sw.DimOrder.HeightWidthChannel, self.target_size[0], self.target_size[1], window_step)
-
-            rois = []
-            ratios = []
-            for window in windows:
-                indices = window.indices()
-                roi = npimg[indices]
-                rois.append(roi)
-                ratio_x, ratio_y = float(indices[1].start) / o_size_w, float(indices[0].start) / o_size_h
-                ratio_w, ratio_h = float(indices[1].stop - indices[1].start) / o_size_w, float(indices[0].stop - indices[0].start) / o_size_h
-                ratios.append((ratio_x, ratio_y, ratio_w, ratio_h))
-
-            return rois, ratios
-        elif isinstance(scale, tuple) and len(scale) == 3:
-            # scaling with ROI : (want_x, want_y, scale_ratio)
-            base_scale = get_base_scale(scale[2], img_w, img_h)
-            npimg = cv2.resize(npimg, dsize=None, fx=base_scale, fy=base_scale, interpolation=cv2.INTER_CUBIC)
-            ratio_w = self.target_size[0] / float(npimg.shape[1])
-            ratio_h = self.target_size[1] / float(npimg.shape[0])
-
-            want_x, want_y = scale[:2]
-            ratio_x = want_x - ratio_w / 2.
-            ratio_y = want_y - ratio_h / 2.
-            ratio_x = max(ratio_x, 0.0)
-            ratio_y = max(ratio_y, 0.0)
-            if ratio_x + ratio_w > 1.0:
-                ratio_x = 1. - ratio_w
-            if ratio_y + ratio_h > 1.0:
-                ratio_y = 1. - ratio_h
-
-            roi = self._crop_roi(npimg, ratio_x, ratio_y)
-            return [roi], [(ratio_x, ratio_y, ratio_w, ratio_h)]
-
-    def _crop_roi(self, npimg, ratio_x, ratio_y):
-        target_w, target_h = self.target_size
-        h, w = npimg.shape[:2]
-        x = max(int(w*ratio_x-.5), 0)
-        y = max(int(h*ratio_y-.5), 0)
-        cropped = npimg[y:y+target_h, x:x+target_w]
-
-        cropped_h, cropped_w = cropped.shape[:2]
-        if cropped_w < target_w or cropped_h < target_h:
-            npblank = np.zeros((self.target_size[1], self.target_size[0], 3), dtype=np.uint8)
-
-            copy_x, copy_y = (target_w - cropped_w) // 2, (target_h - cropped_h) // 2
-            npblank[copy_y:copy_y+cropped_h, copy_x:copy_x+cropped_w] = cropped
-        else:
-            return cropped
-
-    def inference(self, npimg, resize_to_default=True, upsample_size=1.0):
-        if npimg is None:
-            raise Exception('The image is not valid. Please check your image exists.')
-
-        if resize_to_default:
-            upsample_size = [int(self.target_size[1] / 8 * upsample_size), int(self.target_size[0] / 8 * upsample_size)]
-        else:
-            upsample_size = [int(npimg.shape[0] / 8 * upsample_size), int(npimg.shape[1] / 8 * upsample_size)]
+    def inference(self, npimg):
+        if npimg.shape[:2] != (self.target_size[1], self.target_size[0]):
+            # resize
+            npimg = cv2.resize(npimg, self.target_size)
 
         if self.tensor_image.dtype == tf.quint8:
             # quantize input image
             npimg = TfPoseEstimator._quantize_img(npimg)
             pass
 
-        logger.debug('inference+ original shape=%dx%d' % (npimg.shape[1], npimg.shape[0]))
-        img = npimg
-        if resize_to_default:
-            img = self._get_scaled_img(npimg, None)[0][0]
-        peaks, heatMat_up, pafMat_up = self.persistent_sess.run([self.tensor_peaks, self.tensor_heatMat_up, self.tensor_pafMat_up], feed_dict={
-            self.tensor_image: [img], self.upsample_size: upsample_size
-        })
-        peaks = peaks[0]
-        self.heatMat = heatMat_up[0]
-        self.pafMat = pafMat_up[0]
-        logger.debug('inference- heatMat=%dx%d pafMat=%dx%d' % (self.heatMat.shape[1], self.heatMat.shape[0], self.pafMat.shape[1], self.pafMat.shape[0]))
+        logger.debug('inference+')
+        output = self.persistent_sess.run(self.tensor_output, feed_dict={self.tensor_image: [npimg]})
+        logger.debug('inference-')
 
-        t = time.time()
-        humans = PoseEstimator.estimate_paf(peaks, self.heatMat, self.pafMat)
-        logger.debug('estimate time=%.5f' % (time.time() - t))
+        self.heatMat = output[0, :, :, :19]
+        self.pafMat = output[0, :, :, 19:]
+
+        humans = PoseEstimator.estimate(self.heatMat, self.pafMat)
+        #CocoPose.display_image(npimg, self.heatMat, self.pafMat)
         return humans
 
-
-if __name__ == '__main__':
-    import pickle
-    f = open('./etcs/heatpaf1.pkl', 'rb')
-    data = pickle.load(f)
-    logger.info('size={}'.format(data['heatMat'].shape))
-    f.close()
-
-    t = time.time()
-    humans = PoseEstimator.estimate_paf(data['peaks'], data['heatMat'], data['pafMat'])
-    dt = time.time() - t; t = time.time()
-    logger.info('elapsed #humans=%d time=%.8f' % (len(humans), dt))
