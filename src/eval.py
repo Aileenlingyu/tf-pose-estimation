@@ -49,6 +49,7 @@ if __name__ == '__main__':
     parser.add_argument('--cocoyear', type=str, default='2014')
     parser.add_argument('--coco-dir', type=str, default='/data/public/rw/coco/')
     parser.add_argument('--data-idx', type=int, default=-1)
+    parser.add_argument('--engine', type=str, default="")
     parser.add_argument('--multi-scale', type=bool, default=False)
     args = parser.parse_args()
 
